@@ -270,7 +270,7 @@ fn eval_user_defined_function_call(f: FunctionObj, args: Vec<AllObjects>) -> Opt
     if let Some(AllObjects::ReturnValue(r_val)) = evaluated {
         return Some(*r_val);
     }
-    return evaluated;
+    evaluated
 }
 
 fn eval_builtin_function_calls(f: BuiltinFunctionObj, args: Vec<AllObjects>) -> Option<AllObjects> {
@@ -290,7 +290,7 @@ fn eval_builtin_function_calls(f: BuiltinFunctionObj, args: Vec<AllObjects>) -> 
         }),
     }
 
-    return Some((f.func)(new_env));
+    Some((f.func)(new_env))
 }
 
 fn eval_array_literal(node: ArrayLiteral, env: Rc<Environment>) -> Option<AllObjects> {

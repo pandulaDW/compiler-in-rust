@@ -2,6 +2,7 @@
 #![feature(internal_output_capture)]
 
 mod ast;
+mod code;
 mod evaluator;
 mod lexer;
 mod object;

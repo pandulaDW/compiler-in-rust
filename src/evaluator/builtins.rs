@@ -175,7 +175,7 @@ pub fn insert(env: Rc<Environment>) -> AllObjects {
 /// returns Null otherwise
 pub fn delete(env: Rc<Environment>) -> AllObjects {
     let map_arg = get_argument("map", env.clone());
-    let key = get_argument("key", env.clone());
+    let key = get_argument("key", env);
 
     let m = match map_arg {
         AllObjects::HashMap(v) => v,
@@ -191,7 +191,7 @@ pub fn delete(env: Rc<Environment>) -> AllObjects {
 
 /// Puts the main thread to sleep for at least the specified amount of time given in seconds
 pub fn sleep(env: Rc<Environment>) -> AllObjects {
-    let seconds = match get_argument("seconds", env.clone()) {
+    let seconds = match get_argument("seconds", env) {
         AllObjects::Integer(n) => n,
         v => return errors::unexpected_argument_type("an integer", v),
     };
