@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+
+mod helpers;
+
 use anyhow::anyhow;
 use byteorder::{BigEndian, ByteOrder};
 use iota::iota;
@@ -5,11 +9,13 @@ use iota::iota;
 /// Opcode is an alias to a byte
 pub type Opcode = u8;
 
+/// Instructions are a vector of u8s, which contains all the information needed
+/// to carry out an instruction.
 pub type Instructions = Vec<Opcode>;
 
 // List of OpCode constants which has a width of u8
 iota! {
-    const OP_CONSTANT: Opcode = 1 << iota;
+    pub const OP_CONSTANT: Opcode = 1 << iota;
     , B
 }
 
@@ -43,7 +49,7 @@ impl Definition {
 /// Creates a single bytecode instruction with the `Opcode` at start,
 ///
 /// following the operands encoded, based on the width specified in the `Opcode` definition.
-pub fn make(op: Opcode, operands: &[usize]) -> Vec<u8> {
+pub fn make(op: Opcode, operands: &[usize]) -> Instructions {
     let Ok(def) = Definition::lookup(op) else {
         return vec![];
     };
@@ -69,6 +75,28 @@ pub fn make(op: Opcode, operands: &[usize]) -> Vec<u8> {
     instructions
 }
 
+/// Returns a string representation of the instructions
+pub fn instructions_to_string(ins: &Instructions) -> String {
+    String::new()
+}
+
+/// Decodes operands based on the information provided by the definition and returns
+/// the operands and the number of bytes read.
+pub fn read_operands(def: &Definition, ins: &[u8]) -> (Vec<usize>, usize) {
+    let mut operands = vec![0; def.operand_widths.len()];
+    let mut offset = 0;
+
+    for (i, width) in def.operand_widths.iter().enumerate() {
+        match width {
+            2 => operands[i] = helpers::read_u16(&ins[offset..], offset),
+            _ => {}
+        };
+        offset += width;
+    }
+
+    (operands, offset)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{make, OP_CONSTANT};
@@ -76,7 +104,7 @@ mod tests {
     #[test]
     fn test_make() {
         // (op, operands, expected)
-        let test_cases = [(OP_CONSTANT, vec![65534], vec![OP_CONSTANT, 255, 254])];
+        let test_cases = [(OP_CONSTANT, [65534], vec![OP_CONSTANT, 255, 254])];
 
         for tc in test_cases {
             let instruction = make(tc.0, &tc.1);
