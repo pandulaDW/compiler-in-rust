@@ -38,9 +38,7 @@ struct ByteCode {
 
 #[cfg(test)]
 mod tests {
-    use crate::code::{read_operands, Definition};
-
-    use super::code::{instructions_to_string, make, OP_CONSTANT};
+    use super::code::*;
     use super::test_helpers::*;
 
     #[test]
@@ -65,8 +63,9 @@ mod tests {
         ];
 
         let expected = "0000 OpConstant 1
-        0003 OpConstant 2
-        0006 OpConstant 65535";
+0003 OpConstant 2
+0006 OpConstant 65535
+";
 
         let concatted = concat_instructions(instructions);
         assert_eq!(expected, instructions_to_string(&concatted));
@@ -79,7 +78,7 @@ mod tests {
 
         for tc in test_cases {
             let instruction = make(tc.0, &tc.1);
-            let def = Definition::lookup(tc.0).unwrap();
+            let def = lookup(tc.0).unwrap();
 
             let (operands_read, n) = read_operands(&def, &instruction[1..]);
             assert_eq!(n, tc.2);
@@ -137,11 +136,10 @@ mod test_helpers {
     }
 
     pub fn concat_instructions(s: Vec<Instructions>) -> Instructions {
-        let mut out = Vec::new();
-        for ins in s {
-            out.extend_from_slice(&ins);
-        }
-        out
+        s.iter().fold(Vec::new(), |mut out, ins| {
+            out.extend_from_slice(ins);
+            out
+        })
     }
 
     fn test_integer_object(expected: i64, actual: &AllObjects) {

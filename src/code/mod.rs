@@ -36,13 +36,13 @@ impl Definition {
             operand_widths: widths,
         }
     }
+}
 
-    /// Return the definition based on the Opcode provided
-    pub fn lookup(op: Opcode) -> anyhow::Result<Self> {
-        match op {
-            OP_CONSTANT => Ok(Self::new("OpConstant", vec![2])),
-            _ => Err(anyhow!("opcode must be defined")),
-        }
+/// Return the definition based on the Opcode provided
+pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
+    match op {
+        OP_CONSTANT => Ok(Definition::new("OpConstant", vec![2])),
+        _ => Err(anyhow!("opcode must be defined")),
     }
 }
 
@@ -50,7 +50,7 @@ impl Definition {
 ///
 /// following the operands encoded, based on the width specified in the `Opcode` definition.
 pub fn make(op: Opcode, operands: &[usize]) -> Instructions {
-    let Ok(def) = Definition::lookup(op) else {
+    let Ok(def) = lookup(op) else {
         return vec![];
     };
 
@@ -77,7 +77,26 @@ pub fn make(op: Opcode, operands: &[usize]) -> Instructions {
 
 /// Returns a string representation of the instructions
 pub fn instructions_to_string(ins: &Instructions) -> String {
-    String::new()
+    let mut out = String::new();
+
+    let mut i = 0;
+    while i < ins.len() {
+        let def = match lookup(ins[i]) {
+            Ok(v) => v,
+            Err(e) => {
+                out.push_str(format!("ERROR: {e}\n").as_str());
+                continue;
+            }
+        };
+
+        let (operands, read) = read_operands(&def, &ins[i + 1..]);
+        let formatted_instruction = helpers::format_instruction(&def, &operands);
+
+        out.push_str(format!("{:04} {}\n", i, formatted_instruction).as_str());
+        i += 1 + read;
+    }
+
+    out
 }
 
 /// Decodes operands based on the information provided by the definition and returns
