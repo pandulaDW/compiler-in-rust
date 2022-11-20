@@ -1,24 +1,22 @@
-#![allow(dead_code)]
-
 use crate::{
-    code::{self, Instructions, OP_CONSTANT},
+    code::{self, Instructions, OP_ADD, OP_CONSTANT},
     compiler::ByteCode,
-    object::AllObjects,
+    object::{objects::Integer, AllObjects, Object},
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 
 /// Maximum number of instruction pointers that can be at a given time in the stack
 const STACK_SIZE: usize = 2048;
 
-struct VM {
+pub struct VM {
     /// the constants list obtained from the bytecode
     pub constants: Vec<AllObjects>,
 
     /// bytecode instructions
     pub instructions: Instructions,
 
-    /// contains indices to the constants (to avoid cloning the constants)
-    pub stack: Vec<usize>,
+    /// stack contains the operands and the results
+    pub stack: Vec<AllObjects>,
 
     /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
     sp: usize,
@@ -26,7 +24,7 @@ struct VM {
 
 impl VM {
     /// Creates a new VM using the provided bytecode
-    fn new(bytecode: ByteCode) -> Self {
+    pub fn new(bytecode: ByteCode) -> Self {
         Self {
             constants: bytecode.constants,
             instructions: bytecode.instructions,
@@ -35,14 +33,8 @@ impl VM {
         }
     }
 
-    /// Return the top most element from the stack.
-    fn stack_top(&self) -> Option<&AllObjects> {
-        let const_index = self.stack.get(self.sp - 1)?.to_owned();
-        self.constants.get(const_index)
-    }
-
     /// Runs all the bytecode instructions.
-    fn run(&mut self) -> anyhow::Result<()> {
+    pub fn run(&mut self) -> anyhow::Result<()> {
         let mut ip = 0;
 
         while ip < self.instructions.len() {
@@ -50,10 +42,24 @@ impl VM {
             match op {
                 OP_CONSTANT => {
                     let const_index = code::helpers::read_u16(&self.instructions[(ip + 1)..]);
-                    ip += 2;
-                    if let Err(e) = self.push(const_index) {
-                        return Err(e);
+                    if self.constants.get(const_index).is_none() {
+                        return Err(anyhow!("constant at the index {const_index} not found"));
                     }
+                    self.push(self.constants[const_index].clone())?;
+                    ip += 2;
+                }
+                OP_ADD => {
+                    let right_value = match self.pop()? {
+                        AllObjects::Integer(v) => v,
+                        v => return Err(anyhow!("expected an INTEGER, found {}", v.inspect())),
+                    };
+                    let left_value = match self.pop()? {
+                        AllObjects::Integer(v) => v,
+                        v => return Err(anyhow!("expected an INTEGER, FOUND {}", v.inspect())),
+                    };
+                    self.push(AllObjects::Integer(Integer {
+                        value: left_value.value + right_value.value,
+                    }))?;
                 }
                 _ => {}
             }
@@ -63,17 +69,28 @@ impl VM {
         Ok(())
     }
 
-    /// Pushes the given object on to the stack.
-    fn push(&mut self, const_index: usize) -> anyhow::Result<()> {
+    /// Return the top most element from the stack.
+    pub fn stack_top(&self) -> Option<&AllObjects> {
+        self.stack.get(self.sp - 1)
+    }
+
+    /// Pushes the given object on to the stack and increments the stack pointer.
+    fn push(&mut self, val: AllObjects) -> Result<()> {
         if self.sp >= STACK_SIZE {
             return Err(anyhow!("stack overflow"));
         }
-        if self.constants.get(const_index).is_none() {
-            return Err(anyhow!("constant at the index {const_index} not found"));
-        }
-        self.stack.push(const_index);
+        self.stack.push(val);
         self.sp += 1;
         Ok(())
+    }
+
+    /// Removes the last inserted constant index from the stack and returns it after decrementing the stack pointer.
+    fn pop(&mut self) -> Result<AllObjects> {
+        let Some(obj)  = self.stack.pop() else {
+            return Err(anyhow!("stack is empty"));
+        };
+        self.sp -= 1;
+        Ok(obj)
     }
 }
 
@@ -93,7 +110,7 @@ mod tests {
         use Literal::Int;
 
         // input, expected
-        let test_cases = vec![("11", Int(11)), ("27", Int(27)), ("13 + 29", Int(29))];
+        let test_cases = vec![("11", Int(11)), ("27", Int(27)), ("13 + 29", Int(42))];
 
         for tc in test_cases {
             let program = parse(tc.0);

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub mod helpers;
 
 use anyhow::anyhow;
@@ -16,7 +14,7 @@ pub type Instructions = Vec<Opcode>;
 // List of OpCode constants which has a width of u8
 iota! {
     pub const OP_CONSTANT: Opcode = 1 << iota;
-    , B
+    , OP_ADD
 }
 
 /// An opcode definition for debugging and testing purposes
@@ -42,6 +40,7 @@ impl Definition {
 pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
     match op {
         OP_CONSTANT => Ok(Definition::new("OpConstant", vec![2])),
+        OP_ADD => Ok(Definition::new("OpAdd", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
@@ -75,59 +74,124 @@ pub fn make(op: Opcode, operands: &[usize]) -> Instructions {
     instructions
 }
 
-/// Returns a string representation of the instructions
-pub fn instructions_to_string(ins: &Instructions) -> String {
-    let mut out = String::new();
-
-    let mut i = 0;
-    while i < ins.len() {
-        let def = match lookup(ins[i]) {
-            Ok(v) => v,
-            Err(e) => {
-                out.push_str(format!("ERROR: {e}\n").as_str());
-                continue;
-            }
-        };
-
-        let (operands, read) = read_operands(&def, &ins[i + 1..]);
-        let formatted_instruction = helpers::format_instruction(&def, &operands);
-
-        out.push_str(format!("{:04} {}\n", i, formatted_instruction).as_str());
-        i += 1 + read;
-    }
-
-    out
-}
-
-/// Decodes operands based on the information provided by the definition and returns
-/// the operands and the number of bytes read.
-pub fn read_operands(def: &Definition, ins: &[u8]) -> (Vec<usize>, usize) {
-    let mut operands = vec![0; def.operand_widths.len()];
-    let mut offset = 0;
-
-    for (i, width) in def.operand_widths.iter().enumerate() {
-        match width {
-            2 => operands[i] = helpers::read_u16(&ins[offset..]),
-            _ => {}
-        };
-        offset += width;
-    }
-
-    (operands, offset)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{make, OP_CONSTANT};
+    use super::*;
+    use crate::compiler::test_helpers::concat_instructions;
+    use test_helpers::*;
 
     #[test]
     fn test_make() {
         // (op, operands, expected)
-        let test_cases = [(OP_CONSTANT, [65534], vec![OP_CONSTANT, 255, 254])];
+        let test_cases = [
+            (OP_CONSTANT, vec![65534], vec![OP_CONSTANT, 255, 254]),
+            (OP_ADD, vec![], vec![OP_ADD]),
+        ];
 
         for tc in test_cases {
             let instruction = make(tc.0, &tc.1);
             assert_eq!(instruction, tc.2);
+        }
+    }
+
+    #[test]
+    fn test_instructions_string() {
+        let instructions = vec![
+            make(OP_ADD, &[]),
+            make(OP_CONSTANT, &[2]),
+            make(OP_CONSTANT, &[65535]),
+        ];
+
+        let expected = "0000 OpAdd
+0001 OpConstant 2
+0004 OpConstant 65535
+";
+
+        let concatted = concat_instructions(instructions);
+        assert_eq!(expected, instructions_to_string(&concatted));
+    }
+
+    #[test]
+    fn test_read_operands() {
+        // op, operands, bytes_read
+        let test_cases = [(OP_CONSTANT, [65535], 2)];
+
+        for tc in test_cases {
+            let instruction = make(tc.0, &tc.1);
+            let def = lookup(tc.0).unwrap();
+
+            let (operands_read, n) = read_operands(&def, &instruction[1..]);
+            assert_eq!(n, tc.2);
+
+            for (i, want) in tc.1.into_iter().enumerate() {
+                assert_eq!(want, operands_read[i]);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_helpers {
+    use super::{helpers, lookup, Definition, Instructions};
+
+    /// Returns a string representation of the instructions
+    pub fn instructions_to_string(ins: &Instructions) -> String {
+        let mut out = String::new();
+
+        let mut i = 0;
+        while i < ins.len() {
+            let def = match lookup(ins[i]) {
+                Ok(v) => v,
+                Err(e) => {
+                    out.push_str(format!("ERROR: {e}\n").as_str());
+                    continue;
+                }
+            };
+
+            let (operands, read) = read_operands(&def, &ins[i + 1..]);
+            let formatted_instruction = format_instruction(&def, &operands);
+
+            out.push_str(format!("{:04} {}\n", i, formatted_instruction).as_str());
+            i += 1 + read;
+        }
+
+        out
+    }
+
+    /// Decodes operands based on the information provided by the definition and returns
+    /// the operands and the number of bytes read.
+    pub fn read_operands(def: &Definition, ins: &[u8]) -> (Vec<usize>, usize) {
+        let mut operands = vec![0; def.operand_widths.len()];
+        let mut offset = 0;
+
+        for (i, width) in def.operand_widths.iter().enumerate() {
+            match width {
+                2 => operands[i] = helpers::read_u16(&ins[offset..]),
+                _ => {}
+            };
+            offset += width;
+        }
+
+        (operands, offset)
+    }
+
+    /// Return the formatted instruction along with the passed operands.
+    ///
+    /// Return an error string if the operand count is different from the definition
+    pub fn format_instruction(def: &Definition, operands: &Vec<usize>) -> String {
+        let operand_count = def.operand_widths.len();
+        if operands.len() != operand_count {
+            return format!(
+                "ERROR: operand len {} does not match defined {}\n",
+                operands.len(),
+                operand_count
+            );
+        }
+
+        match operand_count {
+            0 => def.name.to_string(),
+            1 => format!("{} {}", def.name, operands[0]),
+            _ => format!("ERROR: unhandled operandCount for {}\n", def.name),
         }
     }
 }

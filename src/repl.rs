@@ -1,8 +1,9 @@
 use crate::{
-    evaluator,
+    compiler::Compiler,
     lexer::Lexer,
     object::{environment::Environment, Object},
     parser::{Parser, TRACING_ENABLED},
+    vm,
 };
 use clap::Parser as ClapParser;
 use std::{
@@ -90,7 +91,7 @@ const MONKEY_FACE: &str = r#"
 pub fn execute_program<U: Write>(
     text: &str,
     output: &mut U,
-    program_env: Rc<Environment>,
+    _program_env: Rc<Environment>,
 ) -> io::Result<()> {
     let l = Lexer::new(text);
     let mut p = Parser::new(l);
@@ -101,13 +102,24 @@ pub fn execute_program<U: Write>(
         return Ok(());
     }
 
-    let evaluated = evaluator::eval(program.make_node(), program_env);
-    match evaluated {
-        Some(e) if !e.is_null() => {
-            writeln!(output, "{}", e.inspect())?;
-        }
-        Some(_) | None => writeln!(output)?,
+    let mut comp = Compiler::new();
+    if let Err(e) = comp.compile(program.make_node()) {
+        write!(output, "Woops! Compilation failed:\n {}\n", e)?;
+        return Ok(());
     }
+
+    let mut machine = vm::VM::new(comp.byte_code());
+    if let Err(e) = machine.run() {
+        write!(output, "Woops! Executing bytecode failed:\n {}\n", e)?;
+        return Ok(());
+    }
+
+    let Some(stack_top) = machine.stack_top() else {
+        writeln!(output, "Woops! Stack top is empty")?;
+        return Ok(());
+    };
+
+    writeln!(output, "{}", stack_top.inspect())?;
 
     Ok(())
 }
