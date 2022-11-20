@@ -2,8 +2,8 @@ use super::Definition;
 use byteorder::ByteOrder;
 
 /// Reads an unsigned 16 bit integer from the buffer and return a general usize.
-pub fn read_u16(buf: &[u8], offset: usize) -> usize {
-    byteorder::BigEndian::read_u16(&buf[offset..]).into()
+pub fn read_u16(buf: &[u8]) -> usize {
+    byteorder::BigEndian::read_u16(&buf[0..]).into()
 }
 
 /// Return the formatted instruction along with the passed operands.

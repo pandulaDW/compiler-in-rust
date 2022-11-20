@@ -9,6 +9,7 @@ mod lexer;
 mod object;
 mod parser;
 mod repl;
+mod vm;
 
 pub use object::environment::Environment;
 pub use repl::{execute_program, start_repl};

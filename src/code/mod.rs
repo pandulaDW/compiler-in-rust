@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod helpers;
+pub mod helpers;
 
 use anyhow::anyhow;
 use byteorder::{BigEndian, ByteOrder};
@@ -107,7 +107,7 @@ pub fn read_operands(def: &Definition, ins: &[u8]) -> (Vec<usize>, usize) {
 
     for (i, width) in def.operand_widths.iter().enumerate() {
         match width {
-            2 => operands[i] = helpers::read_u16(&ins[offset..], offset),
+            2 => operands[i] = helpers::read_u16(&ins[offset..]),
             _ => {}
         };
         offset += width;
