@@ -11,9 +11,14 @@ use anyhow::anyhow;
 const STACK_SIZE: usize = 2048;
 
 struct VM {
+    /// the constants list obtained from the bytecode
     pub constants: Vec<AllObjects>,
+
+    /// bytecode instructions
     pub instructions: Instructions,
-    pub stack: Vec<AllObjects>,
+
+    /// contains indices to the constants (to avoid cloning the constants)
+    pub stack: Vec<usize>,
 
     /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
     sp: usize,
@@ -30,9 +35,10 @@ impl VM {
         }
     }
 
-    /// Return the top most element of the stack.
+    /// Return the top most element from the stack.
     fn stack_top(&self) -> Option<&AllObjects> {
-        self.stack.get(self.sp - 1)
+        let const_index = self.stack.get(self.sp - 1)?.to_owned();
+        self.constants.get(const_index)
     }
 
     /// Runs all the bytecode instructions.
@@ -45,12 +51,7 @@ impl VM {
                 OP_CONSTANT => {
                     let const_index = code::helpers::read_u16(&self.instructions[(ip + 1)..]);
                     ip += 2;
-
-                    if self.constants.get(const_index).is_none() {
-                        return Err(anyhow!("constant at the index {const_index} not found"));
-                    }
-
-                    if let Err(e) = self.push(self.constants[const_index].clone()) {
+                    if let Err(e) = self.push(const_index) {
                         return Err(e);
                     }
                 }
@@ -63,11 +64,14 @@ impl VM {
     }
 
     /// Pushes the given object on to the stack.
-    fn push(&mut self, obj: AllObjects) -> anyhow::Result<()> {
+    fn push(&mut self, const_index: usize) -> anyhow::Result<()> {
         if self.sp >= STACK_SIZE {
             return Err(anyhow!("stack overflow"));
         }
-        self.stack.push(obj);
+        if self.constants.get(const_index).is_none() {
+            return Err(anyhow!("constant at the index {const_index} not found"));
+        }
+        self.stack.push(const_index);
         self.sp += 1;
         Ok(())
     }
