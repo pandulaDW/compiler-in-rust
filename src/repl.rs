@@ -114,7 +114,7 @@ pub fn execute_program<U: Write>(
         return Ok(());
     }
 
-    let Some(stack_top) = machine.stack_top() else {
+    let Some(stack_top) = machine.result() else {
         writeln!(output, "Woops! Stack top is empty")?;
         return Ok(());
     };

@@ -2,10 +2,10 @@ use super::Compiler;
 use crate::{
     ast::{
         expressions::{self, AllExpressions},
-        statements::AllStatements,
+        statements::{self, AllStatements},
         AllNodes,
     },
-    code::{OP_ADD, OP_CONSTANT},
+    code::{OP_ADD, OP_CONSTANT, OP_POP},
     object::{objects::Integer, AllObjects},
 };
 use anyhow::{anyhow, Ok, Result};
@@ -21,12 +21,7 @@ impl Compiler {
                 }
             }
             AllNodes::Statements(stmt) => match stmt {
-                AllStatements::Expression(expr_stmt) => {
-                    let Some(expr) = expr_stmt.expression else {
-                        return Err(anyhow!("expression statement should contain an expression"));
-                    };
-                    return self.compile(AllNodes::Expressions(*expr));
-                }
+                AllStatements::Expression(stmt) => self.compile_expression_statement(stmt)?,
                 _ => todo!(),
             },
             AllNodes::Expressions(expr) => match expr {
@@ -35,6 +30,18 @@ impl Compiler {
                 _ => todo!(),
             },
         }
+        Ok(())
+    }
+
+    fn compile_expression_statement(
+        &mut self,
+        stmt: statements::ExpressionStatement,
+    ) -> Result<()> {
+        let Some(expr) = stmt.expression else {
+            return Err(anyhow!("expression statement should contain an expression"));
+        };
+        self.compile(AllNodes::Expressions(*expr))?;
+        self.emit(OP_POP, &[]);
         Ok(())
     }
 

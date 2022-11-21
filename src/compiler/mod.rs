@@ -63,15 +63,28 @@ mod tests {
     fn test_integer_arithmetic() {
         use Literal::Int;
 
-        let test_cases = vec![(
-            "11 + 25",
-            vec![Int(11), Int(25)],
-            vec![
-                make(OP_CONSTANT, &[0]),
-                make(OP_CONSTANT, &[1]),
-                make(OP_ADD, &[]),
-            ],
-        )];
+        let test_cases = vec![
+            (
+                "1; 2",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_POP, &[]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "11 + 25",
+                vec![Int(11), Int(25)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_ADD, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
 
         run_compiler_tests(test_cases);
     }

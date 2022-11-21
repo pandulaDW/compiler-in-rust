@@ -11,10 +11,11 @@ pub type Opcode = u8;
 /// to carry out an instruction.
 pub type Instructions = Vec<Opcode>;
 
-// List of OpCode constants which has a width of u8
+// List of OpCodes which has a width of u8
 iota! {
     pub const OP_CONSTANT: Opcode = 1 << iota;
     , OP_ADD
+    , OP_POP
 }
 
 /// An opcode definition for debugging and testing purposes
@@ -41,6 +42,7 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
     match op {
         OP_CONSTANT => Ok(Definition::new("OpConstant", vec![2])),
         OP_ADD => Ok(Definition::new("OpAdd", vec![])),
+        OP_POP => Ok(Definition::new("OpPop", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }

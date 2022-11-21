@@ -1,25 +1,28 @@
 use crate::{
-    code::{self, Instructions, OP_ADD, OP_CONSTANT},
+    code::{self, Instructions, OP_ADD, OP_CONSTANT, OP_POP},
     compiler::ByteCode,
     object::{objects::Integer, AllObjects, Object},
 };
 use anyhow::{anyhow, Result};
 
-/// Maximum number of instruction pointers that can be at a given time in the stack
+/// Maximum number of objects that can be at a given time in the stack
 const STACK_SIZE: usize = 2048;
 
 pub struct VM {
     /// the constants list obtained from the bytecode
-    pub constants: Vec<AllObjects>,
+    constants: Vec<AllObjects>,
 
     /// bytecode instructions
-    pub instructions: Instructions,
+    instructions: Instructions,
 
-    /// stack contains the operands and the results
-    pub stack: Vec<AllObjects>,
+    /// stack will host the operands and the results
+    stack: Vec<AllObjects>,
 
     /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
     sp: usize,
+
+    /// last popped stack element
+    result: Option<AllObjects>,
 }
 
 impl VM {
@@ -30,6 +33,7 @@ impl VM {
             instructions: bytecode.instructions,
             stack: Vec::with_capacity(STACK_SIZE),
             sp: 0,
+            result: None,
         }
     }
 
@@ -61,6 +65,9 @@ impl VM {
                         value: left_value.value + right_value.value,
                     }))?;
                 }
+                OP_POP => {
+                    self.pop()?;
+                }
                 _ => {}
             }
             ip += 1;
@@ -70,8 +77,8 @@ impl VM {
     }
 
     /// Return the top most element from the stack.
-    pub fn stack_top(&self) -> Option<&AllObjects> {
-        self.stack.get(self.sp - 1)
+    pub fn result(&self) -> Option<&AllObjects> {
+        self.result.as_ref()
     }
 
     /// Pushes the given object on to the stack and increments the stack pointer.
@@ -84,12 +91,19 @@ impl VM {
         Ok(())
     }
 
-    /// Removes the last inserted constant index from the stack and returns it after decrementing the stack pointer.
+    /// Removes the last value from the stack and returns it after decrementing the stack pointer.
+    ///
+    /// If the stack is empty after this call, this also sets the final result to be returned.
     fn pop(&mut self) -> Result<AllObjects> {
         let Some(obj)  = self.stack.pop() else {
             return Err(anyhow!("stack is empty"));
         };
         self.sp -= 1;
+
+        if self.stack.is_empty() {
+            self.result = Some(obj.clone());
+        }
+
         Ok(obj)
     }
 }
@@ -110,7 +124,12 @@ mod tests {
         use Literal::Int;
 
         // input, expected
-        let test_cases = vec![("11", Int(11)), ("27", Int(27)), ("13 + 29", Int(42))];
+        let test_cases = vec![
+            ("11", Int(11)),
+            ("13; 27", Int(27)),
+            ("13 + 29", Int(42)),
+            ("1 + 2 + 4", Int(7)),
+        ];
 
         for tc in test_cases {
             let program = parse(tc.0);
@@ -124,7 +143,7 @@ mod tests {
                 panic!("vm error:  {}", e);
             }
 
-            let stack_elem = vm.stack_top();
+            let stack_elem = vm.result();
             helper_test_expected_object(tc.1, stack_elem.unwrap());
         }
     }
