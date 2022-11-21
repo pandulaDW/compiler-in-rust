@@ -1,5 +1,5 @@
 use crate::{
-    code::{self, Instructions, OP_ADD, OP_CONSTANT, OP_POP},
+    code::{self, Instructions, OP_ADD, OP_CONSTANT, OP_DIV, OP_MUL, OP_POP, OP_SUB},
     compiler::ByteCode,
     object::{objects::Integer, AllObjects, Object},
 };
@@ -52,7 +52,7 @@ impl VM {
                     self.push(self.constants[const_index].clone())?;
                     ip += 2;
                 }
-                OP_ADD => {
+                OP_ADD | OP_SUB | OP_MUL | OP_DIV => {
                     let right_value = match self.pop()? {
                         AllObjects::Integer(v) => v,
                         v => return Err(anyhow!("expected an INTEGER, found {}", v.inspect())),
@@ -61,9 +61,14 @@ impl VM {
                         AllObjects::Integer(v) => v,
                         v => return Err(anyhow!("expected an INTEGER, FOUND {}", v.inspect())),
                     };
-                    self.push(AllObjects::Integer(Integer {
-                        value: left_value.value + right_value.value,
-                    }))?;
+                    let result = match op {
+                        OP_ADD => left_value.value + right_value.value,
+                        OP_SUB => left_value.value - right_value.value,
+                        OP_MUL => left_value.value * right_value.value,
+                        OP_DIV => left_value.value / right_value.value,
+                        _ => unreachable!(),
+                    };
+                    self.push(AllObjects::Integer(Integer { value: result }))?;
                 }
                 OP_POP => {
                     self.pop()?;
@@ -129,6 +134,15 @@ mod tests {
             ("13; 27", Int(27)),
             ("13 + 29", Int(42)),
             ("1 + 2 + 4", Int(7)),
+            ("1 - 2", Int(-1)),
+            ("3 * 4", Int(12)),
+            ("4 / 2", Int(2)),
+            ("50 / 2 * 2 + 10 - 5", Int(55)),
+            ("5 + 5 + 5 + 5 - 10", Int(10)),
+            ("2 * 2 * 2 * 2 * 2", Int(32)),
+            ("5 * 2 + 10", Int(20)),
+            ("5 + 2 * 10", Int(25)),
+            ("5 * (2 + 10)", Int(60)),
         ];
 
         for tc in test_cases {

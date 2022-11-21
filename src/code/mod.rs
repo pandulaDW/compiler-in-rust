@@ -16,6 +16,9 @@ iota! {
     pub const OP_CONSTANT: Opcode = 1 << iota;
     , OP_ADD
     , OP_POP
+    , OP_SUB
+    , OP_MUL
+    , OP_DIV
 }
 
 /// An opcode definition for debugging and testing purposes
@@ -43,6 +46,9 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_CONSTANT => Ok(Definition::new("OpConstant", vec![2])),
         OP_ADD => Ok(Definition::new("OpAdd", vec![])),
         OP_POP => Ok(Definition::new("OpPop", vec![])),
+        OP_SUB => Ok(Definition::new("OpSub", vec![])),
+        OP_MUL => Ok(Definition::new("OpMul", vec![])),
+        OP_DIV => Ok(Definition::new("OpDiv", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }

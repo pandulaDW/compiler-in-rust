@@ -5,7 +5,7 @@ use crate::{
         statements::{self, AllStatements},
         AllNodes,
     },
-    code::{OP_ADD, OP_CONSTANT, OP_POP},
+    code::{OP_ADD, OP_CONSTANT, OP_DIV, OP_MUL, OP_POP, OP_SUB},
     object::{objects::Integer, AllObjects},
 };
 use anyhow::{anyhow, Ok, Result};
@@ -58,6 +58,9 @@ impl Compiler {
 
         match expr.operator.as_str() {
             "+" => self.emit(OP_ADD, &[]),
+            "-" => self.emit(OP_SUB, &[]),
+            "*" => self.emit(OP_MUL, &[]),
+            "/" => self.emit(OP_DIV, &[]),
             v => return Err(anyhow!("unknown arithmetic operator: {v}")),
         };
         Ok(())

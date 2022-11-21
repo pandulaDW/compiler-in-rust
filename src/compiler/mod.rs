@@ -84,6 +84,36 @@ mod tests {
                     make(OP_POP, &[]),
                 ],
             ),
+            (
+                "13 - 18",
+                vec![Int(13), Int(18)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_SUB, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "7 * 8",
+                vec![Int(7), Int(8)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_MUL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "2 / 1",
+                vec![Int(2), Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_DIV, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
         ];
 
         run_compiler_tests(test_cases);
