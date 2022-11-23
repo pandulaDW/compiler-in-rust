@@ -1,12 +1,20 @@
+mod run;
+
 use crate::{
-    code::{self, Instructions, OP_ADD, OP_CONSTANT, OP_DIV, OP_MUL, OP_POP, OP_SUB},
+    code::Instructions,
     compiler::ByteCode,
-    object::{objects::Integer, AllObjects, Object},
+    object::{objects::Boolean, AllObjects},
 };
 use anyhow::{anyhow, Result};
 
 /// Maximum number of objects that can be at a given time in the stack
 const STACK_SIZE: usize = 2048;
+
+/// TRUE constant
+const TRUE: AllObjects = AllObjects::Boolean(Boolean { value: true });
+
+/// FALSE constant
+const FALSE: AllObjects = AllObjects::Boolean(Boolean { value: false });
 
 pub struct VM {
     /// the constants list obtained from the bytecode
@@ -21,6 +29,9 @@ pub struct VM {
     /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
     sp: usize,
 
+    /// instruction pointer, which points the index of the currently executing opcode
+    ip: usize,
+
     /// last popped stack element
     result: Option<AllObjects>,
 }
@@ -33,52 +44,9 @@ impl VM {
             instructions: bytecode.instructions,
             stack: Vec::with_capacity(STACK_SIZE),
             sp: 0,
+            ip: 0,
             result: None,
         }
-    }
-
-    /// Runs all the bytecode instructions.
-    pub fn run(&mut self) -> anyhow::Result<()> {
-        let mut ip = 0;
-
-        while ip < self.instructions.len() {
-            let op = self.instructions[ip];
-            match op {
-                OP_CONSTANT => {
-                    let const_index = code::helpers::read_u16(&self.instructions[(ip + 1)..]);
-                    if self.constants.get(const_index).is_none() {
-                        return Err(anyhow!("constant at the index {const_index} not found"));
-                    }
-                    self.push(self.constants[const_index].clone())?;
-                    ip += 2;
-                }
-                OP_ADD | OP_SUB | OP_MUL | OP_DIV => {
-                    let right_value = match self.pop()? {
-                        AllObjects::Integer(v) => v,
-                        v => return Err(anyhow!("expected an INTEGER, found {}", v.inspect())),
-                    };
-                    let left_value = match self.pop()? {
-                        AllObjects::Integer(v) => v,
-                        v => return Err(anyhow!("expected an INTEGER, FOUND {}", v.inspect())),
-                    };
-                    let result = match op {
-                        OP_ADD => left_value.value + right_value.value,
-                        OP_SUB => left_value.value - right_value.value,
-                        OP_MUL => left_value.value * right_value.value,
-                        OP_DIV => left_value.value / right_value.value,
-                        _ => unreachable!(),
-                    };
-                    self.push(AllObjects::Integer(Integer { value: result }))?;
-                }
-                OP_POP => {
-                    self.pop()?;
-                }
-                _ => {}
-            }
-            ip += 1;
-        }
-
-        Ok(())
     }
 
     /// Return the top most element from the stack.
@@ -98,14 +66,14 @@ impl VM {
 
     /// Removes the last value from the stack and returns it after decrementing the stack pointer.
     ///
-    /// If the stack is empty after this call, this also sets the final result to be returned.
+    /// If the stack is empty after this call and the instructions are empty, this also sets the final result to be returned.
     fn pop(&mut self) -> Result<AllObjects> {
         let Some(obj)  = self.stack.pop() else {
             return Err(anyhow!("stack is empty"));
         };
         self.sp -= 1;
 
-        if self.stack.is_empty() {
+        if self.stack.is_empty() && (self.ip + 1) >= self.instructions.len() {
             self.result = Some(obj.clone());
         }
 
@@ -116,17 +84,14 @@ impl VM {
 #[cfg(test)]
 mod tests {
     use crate::{
-        compiler::{
-            test_helpers::{parse, test_integer_object, Literal},
-            Compiler,
-        },
+        compiler::{test_helpers::*, Compiler},
         object::AllObjects,
         vm::VM,
     };
 
     #[test]
     fn test_vm_works() {
-        use Literal::Int;
+        use Literal::{Bool, Int};
 
         // input, expected
         let test_cases = vec![
@@ -143,18 +108,37 @@ mod tests {
             ("5 * 2 + 10", Int(20)),
             ("5 + 2 * 10", Int(25)),
             ("5 * (2 + 10)", Int(60)),
+            ("true", Bool(true)),
+            ("false", Bool(false)),
+            ("1 < 2", Bool(true)),
+            ("1 > 2", Bool(false)),
+            ("1 < 1", Bool(false)),
+            ("1 > 1", Bool(false)),
+            ("1 == 1", Bool(true)),
+            ("1 != 1", Bool(false)),
+            ("1 == 2", Bool(false)),
+            ("1 != 2", Bool(true)),
+            ("true == true", Bool(true)),
+            ("false == false", Bool(true)),
+            ("true == false", Bool(false)),
+            ("true != false", Bool(true)),
+            ("false != true", Bool(true)),
+            ("(1 < 2) == true", Bool(true)),
+            ("(1 < 2) == false", Bool(false)),
+            ("(1 > 2) == true", Bool(false)),
+            ("(1 > 2) == false", Bool(true)),
         ];
 
         for tc in test_cases {
             let program = parse(tc.0);
             let mut comp = Compiler::new();
             if let Err(e) = comp.compile(program.make_node()) {
-                panic!("compiler error:  {}", e);
+                panic!("input: {}, compiler error:  {}", tc.0, e);
             }
 
             let mut vm = VM::new(comp.byte_code());
             if let Err(e) = vm.run() {
-                panic!("vm error:  {}", e);
+                panic!("input: {}, vm error:  {}", tc.0, e);
             }
 
             let stack_elem = vm.result();
@@ -165,6 +149,7 @@ mod tests {
     fn helper_test_expected_object(expected: Literal, actual: &AllObjects) {
         match expected {
             Literal::Int(v) => test_integer_object(v, actual),
+            Literal::Bool(v) => test_boolean_object(v, actual),
         }
     }
 }

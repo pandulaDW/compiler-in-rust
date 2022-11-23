@@ -17,6 +17,5 @@ path = "src/lib.rs"
 whoami = "1.2"
 clap = { version = "3.2", features = ["derive"] }
 uuid = { version = "1", features = ["v4", "fast-rng"] }
-iota = "0.2.2"
 anyhow = "1.0"
 byteorder = "1"

@@ -1,7 +1,10 @@
-An interpreter written in Rust by following the books from
-[Thorsten Ball](https://interpreterbook.com/) on writing an interpreter in Go.
+A compiler that emits bytecode and a VM that could decode and execute said bytecode.
 
-The interpreter is built from scratch and it includes a lexer (tokenizer), a parser and a tree walking interpreter.
+This is written in Rust by following the books from [Thorsten Ball](https://interpreterbook.com/) on writing a compiler in Go.</br>
+The compiler is built from scratch and it includes a lexer (tokenizer), a parser, a compiler and a vm.
+
+This project is an extension to a previously written [interpreter](https://github.com/pandulaDW/interpreter-in-rust) project.</br>
+Except for the tree walking evaluation part, everything else has been ported from that project.
 
 ---
 
@@ -55,5 +58,5 @@ map(arr, add_1);
 - The tokens will be fed in to the parser, which forwards the tokens as it parses the program statements one by one.
 - To parse expressions, pratt parsing is used (recursive decent parsing).
 - For each statement/expression parsed, the parser will create a corresponding AST node to be later evaluated.
-- Once the parsing is finished, a tree walking evaluator will evaluate the program from beginning to the end and will return the final result.
-- There is a global state as well as block level state for functions, if-expressions, and while-statements, which are built on top of HashMaps. Each function call also generates a scope chain to facilitate closures.
+- Once the parsing is finished, the compiler will walk through the AST node recursively and emit the instructions and index the constants.
+- The VM will then run the program using the emitted instructions and the constant index.

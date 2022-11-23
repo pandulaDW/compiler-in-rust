@@ -118,6 +118,80 @@ mod tests {
 
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_boolean_expressions() {
+        use Literal::Int;
+        let test_cases: Vec<CompilerTestCase> = vec![
+            ("true", vec![], vec![make(OP_TRUE, &[]), make(OP_POP, &[])]),
+            (
+                "false",
+                vec![],
+                vec![make(OP_FALSE, &[]), make(OP_POP, &[])],
+            ),
+            (
+                "1 > 2",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_GREATER_THAN, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "1 < 2",
+                vec![Int(2), Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_GREATER_THAN, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "1 == 2",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_EQUAL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "1 != 2",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_NOT_EQUAL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "true == false",
+                vec![],
+                vec![
+                    make(OP_TRUE, &[]),
+                    make(OP_FALSE, &[]),
+                    make(OP_EQUAL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "true != false",
+                vec![],
+                vec![
+                    make(OP_TRUE, &[]),
+                    make(OP_FALSE, &[]),
+                    make(OP_NOT_EQUAL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]
@@ -127,10 +201,11 @@ pub mod test_helpers {
 
     pub enum Literal {
         Int(i64),
+        Bool(bool),
     }
 
     // input, expectedConstants, expectedInstructions
-    type CompilerTestCase<'a> = (&'a str, Vec<Literal>, Vec<Instructions>);
+    pub type CompilerTestCase<'a> = (&'a str, Vec<Literal>, Vec<Instructions>);
 
     pub fn run_compiler_tests(test_cases: Vec<CompilerTestCase>) {
         for tc in test_cases {
@@ -161,6 +236,7 @@ pub mod test_helpers {
         for (i, constant) in expected.into_iter().enumerate() {
             match constant {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
+                Literal::Bool(_) => {}
             }
         }
     }
@@ -176,6 +252,13 @@ pub mod test_helpers {
         match actual {
             AllObjects::Integer(v) => assert_eq!(v.value, expected),
             _ => panic!("expected an integer object"),
+        };
+    }
+
+    pub fn test_boolean_object(expected: bool, actual: &AllObjects) {
+        match actual {
+            AllObjects::Boolean(v) => assert_eq!(v.value, expected),
+            _ => panic!("expected a boolean object"),
         };
     }
 

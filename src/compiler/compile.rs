@@ -5,10 +5,13 @@ use crate::{
         statements::{self, AllStatements},
         AllNodes,
     },
-    code::{OP_ADD, OP_CONSTANT, OP_DIV, OP_MUL, OP_POP, OP_SUB},
+    code::{
+        OP_ADD, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_MUL, OP_NOT_EQUAL,
+        OP_POP, OP_SUB, OP_TRUE,
+    },
     object::{objects::Integer, AllObjects},
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Result};
 
 impl Compiler {
     /// Entrypoint for the compilation process. This method will be called
@@ -26,6 +29,7 @@ impl Compiler {
             },
             AllNodes::Expressions(expr) => match expr {
                 AllExpressions::IntegerLiteral(v) => self.compile_integer_literal(v)?,
+                AllExpressions::Boolean(v) => self.compile_boolean_literal(v)?,
                 AllExpressions::InfixExpression(expr) => self.compile_infix_expression(expr)?,
                 _ => todo!(),
             },
@@ -49,18 +53,26 @@ impl Compiler {
         let Some(left) = expr.left else {
             return Err(anyhow!("infix expression should contain a left expression"));
         };
-        self.compile(AllNodes::Expressions(*left))?;
-
         let Some(right) = expr.right else {
             return Err(anyhow!("infix expression should contain a right expression"));
         };
-        self.compile(AllNodes::Expressions(*right))?;
+
+        if expr.operator == "<" {
+            self.compile(AllNodes::Expressions(*right))?;
+            self.compile(AllNodes::Expressions(*left))?;
+        } else {
+            self.compile(AllNodes::Expressions(*left))?;
+            self.compile(AllNodes::Expressions(*right))?;
+        }
 
         match expr.operator.as_str() {
             "+" => self.emit(OP_ADD, &[]),
             "-" => self.emit(OP_SUB, &[]),
             "*" => self.emit(OP_MUL, &[]),
             "/" => self.emit(OP_DIV, &[]),
+            ">" | "<" => self.emit(OP_GREATER_THAN, &[]),
+            "==" => self.emit(OP_EQUAL, &[]),
+            "!=" => self.emit(OP_NOT_EQUAL, &[]),
             v => return Err(anyhow!("unknown arithmetic operator: {v}")),
         };
         Ok(())
@@ -70,6 +82,14 @@ impl Compiler {
         let integer = AllObjects::Integer(Integer { value: v.value });
         let constant_index = self.add_constant(integer);
         self.emit(OP_CONSTANT, &[constant_index]);
+        Ok(())
+    }
+
+    fn compile_boolean_literal(&mut self, v: expressions::Boolean) -> Result<()> {
+        match v.value {
+            true => self.emit(OP_TRUE, &[]),
+            false => self.emit(OP_FALSE, &[]),
+        };
         Ok(())
     }
 }

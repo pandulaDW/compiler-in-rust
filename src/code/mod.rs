@@ -2,7 +2,6 @@ pub mod helpers;
 
 use anyhow::anyhow;
 use byteorder::{BigEndian, ByteOrder};
-use iota::iota;
 
 /// Opcode is an alias to a byte
 pub type Opcode = u8;
@@ -12,14 +11,17 @@ pub type Opcode = u8;
 pub type Instructions = Vec<Opcode>;
 
 // List of OpCodes which has a width of u8
-iota! {
-    pub const OP_CONSTANT: Opcode = 1 << iota;
-    , OP_ADD
-    , OP_POP
-    , OP_SUB
-    , OP_MUL
-    , OP_DIV
-}
+pub const OP_CONSTANT: Opcode = 1;
+pub const OP_ADD: Opcode = 2;
+pub const OP_POP: Opcode = 3;
+pub const OP_SUB: Opcode = 4;
+pub const OP_MUL: Opcode = 5;
+pub const OP_DIV: Opcode = 6;
+pub const OP_TRUE: Opcode = 7;
+pub const OP_FALSE: Opcode = 8;
+pub const OP_EQUAL: Opcode = 9;
+pub const OP_NOT_EQUAL: Opcode = 10;
+pub const OP_GREATER_THAN: Opcode = 11;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -49,6 +51,11 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_SUB => Ok(Definition::new("OpSub", vec![])),
         OP_MUL => Ok(Definition::new("OpMul", vec![])),
         OP_DIV => Ok(Definition::new("OpDiv", vec![])),
+        OP_TRUE => Ok(Definition::new("OpTrue", vec![])),
+        OP_FALSE => Ok(Definition::new("OpFalse", vec![])),
+        OP_EQUAL => Ok(Definition::new("OpEqual", vec![])),
+        OP_NOT_EQUAL => Ok(Definition::new("OpNotEqual", vec![])),
+        OP_GREATER_THAN => Ok(Definition::new("OpGreaterThan", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
