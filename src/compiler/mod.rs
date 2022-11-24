@@ -114,6 +114,15 @@ mod tests {
                     make(OP_POP, &[]),
                 ],
             ),
+            (
+                "-81",
+                vec![Int(81)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_MINUS, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
         ];
 
         run_compiler_tests(test_cases);
@@ -188,6 +197,11 @@ mod tests {
                     make(OP_NOT_EQUAL, &[]),
                     make(OP_POP, &[]),
                 ],
+            ),
+            (
+                "!true",
+                vec![],
+                vec![make(OP_TRUE, &[]), make(OP_BANG, &[]), make(OP_POP, &[])],
             ),
         ];
         run_compiler_tests(test_cases);

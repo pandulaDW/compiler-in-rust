@@ -1,9 +1,6 @@
 use super::{FALSE, TRUE, VM};
 use crate::{
-    code::{
-        self, Opcode, OP_ADD, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_MUL,
-        OP_NOT_EQUAL, OP_POP, OP_SUB, OP_TRUE,
-    },
+    code::{self, *},
     object::{objects::Integer, AllObjects, Object},
 };
 use anyhow::{anyhow, Result};
@@ -19,6 +16,8 @@ impl VM {
                 OP_EQUAL | OP_NOT_EQUAL | OP_GREATER_THAN => self.run_boolean_operations(op)?,
                 OP_TRUE => self.push(TRUE)?,
                 OP_FALSE => self.push(FALSE)?,
+                OP_MINUS => self.run_prefix_minus()?,
+                OP_BANG => self.run_prefix_bang()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -92,8 +91,7 @@ impl VM {
             OP_GREATER_THAN => left.value > right.value,
             _ => unreachable!(),
         };
-        self.push(Self::get_bool_constant(result))?;
-        Ok(())
+        self.push(Self::get_bool_constant(result))
     }
 
     fn run_comparison_for_bools(&mut self, op: Opcode, l: AllObjects, r: AllObjects) -> Result<()> {
@@ -111,8 +109,26 @@ impl VM {
             OP_GREATER_THAN => left.value & !right.value,
             _ => unreachable!(),
         };
-        self.push(Self::get_bool_constant(result))?;
-        Ok(())
+        self.push(Self::get_bool_constant(result))
+    }
+
+    fn run_prefix_minus(&mut self) -> Result<()> {
+        let right = match self.pop()? {
+            AllObjects::Integer(v) => v,
+            v => return Err(anyhow!("expected an INTEGER, found {}", v.inspect())),
+        };
+        self.push(AllObjects::Integer(Integer {
+            value: -right.value,
+        }))
+    }
+
+    fn run_prefix_bang(&mut self) -> Result<()> {
+        let result = match self.pop()? {
+            TRUE => FALSE,
+            FALSE => TRUE,
+            _ => FALSE,
+        };
+        self.push(result)
     }
 
     fn get_bool_constant(val: bool) -> AllObjects {

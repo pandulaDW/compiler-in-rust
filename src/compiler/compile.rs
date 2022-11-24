@@ -6,12 +6,12 @@ use crate::{
         AllNodes,
     },
     code::{
-        OP_ADD, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_MUL, OP_NOT_EQUAL,
-        OP_POP, OP_SUB, OP_TRUE,
+        OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_MINUS,
+        OP_MUL, OP_NOT_EQUAL, OP_POP, OP_SUB, OP_TRUE,
     },
     object::{objects::Integer, AllObjects},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 
 impl Compiler {
     /// Entrypoint for the compilation process. This method will be called
@@ -30,7 +30,8 @@ impl Compiler {
             AllNodes::Expressions(expr) => match expr {
                 AllExpressions::IntegerLiteral(v) => self.compile_integer_literal(v)?,
                 AllExpressions::Boolean(v) => self.compile_boolean_literal(v)?,
-                AllExpressions::InfixExpression(expr) => self.compile_infix_expression(expr)?,
+                AllExpressions::PrefixExpression(v) => self.compile_prefix_expression(v)?,
+                AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
                 _ => todo!(),
             },
         }
@@ -75,6 +76,21 @@ impl Compiler {
             "!=" => self.emit(OP_NOT_EQUAL, &[]),
             v => return Err(anyhow!("unknown arithmetic operator: {v}")),
         };
+        Ok(())
+    }
+
+    fn compile_prefix_expression(&mut self, expr: expressions::PrefixExpression) -> Result<()> {
+        let Some(right) = expr.right else {
+            return Err(anyhow!("prefix expression should contain a right expression"));
+        };
+        self.compile(AllNodes::Expressions(*right))?;
+
+        match expr.operator.as_str() {
+            "-" => self.emit(OP_MINUS, &[]),
+            "!" => self.emit(OP_BANG, &[]),
+            v => return Err(anyhow!("unknown prefix expression: {v}")),
+        };
+
         Ok(())
     }
 

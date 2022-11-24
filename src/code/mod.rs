@@ -22,6 +22,8 @@ pub const OP_FALSE: Opcode = 8;
 pub const OP_EQUAL: Opcode = 9;
 pub const OP_NOT_EQUAL: Opcode = 10;
 pub const OP_GREATER_THAN: Opcode = 11;
+pub const OP_MINUS: Opcode = 12;
+pub const OP_BANG: Opcode = 13;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -56,6 +58,8 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_EQUAL => Ok(Definition::new("OpEqual", vec![])),
         OP_NOT_EQUAL => Ok(Definition::new("OpNotEqual", vec![])),
         OP_GREATER_THAN => Ok(Definition::new("OpGreaterThan", vec![])),
+        OP_MINUS => Ok(Definition::new("OpMinus", vec![])),
+        OP_BANG => Ok(Definition::new("OpBang", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }

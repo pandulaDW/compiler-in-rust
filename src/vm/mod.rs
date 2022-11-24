@@ -127,6 +127,16 @@ mod tests {
             ("(1 < 2) == false", Bool(false)),
             ("(1 > 2) == true", Bool(false)),
             ("(1 > 2) == false", Bool(true)),
+            ("-5", Int(-5)),
+            ("-10", Int(-10)),
+            ("-50 + 100 + -50", Int(0)),
+            ("(5 + 10 * 2 + 15 / 3) * 2 + -10", Int(50)),
+            ("!true", Bool(false)),
+            ("!false", Bool(true)),
+            ("!5", Bool(false)),
+            ("!!true", Bool(true)),
+            ("!!false", Bool(false)),
+            // ("!!5", Bool(true)),
         ];
 
         for tc in test_cases {
