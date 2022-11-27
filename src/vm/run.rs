@@ -21,6 +21,7 @@ impl VM {
                 OP_POP => {
                     self.pop()?;
                 }
+                OP_JUMP_NOT_TRUTHY => self.run_jump_instruction()?,
                 _ => {}
             }
             self.ip += 1;
@@ -73,6 +74,23 @@ impl VM {
         }
         self.push(self.constants[const_index].clone())?;
         self.ip += 2;
+        Ok(())
+    }
+
+    fn run_jump_instruction(&mut self) -> Result<()> {
+        let condition = match self.pop()? {
+            AllObjects::Boolean(v) => v,
+            v => {
+                return Err(anyhow!(
+                    "expected a BOOLEAN condition, received {}",
+                    v.inspect()
+                ))
+            }
+        };
+
+        if condition.value {}
+        self.ip += 2;
+
         Ok(())
     }
 

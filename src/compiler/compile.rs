@@ -6,8 +6,8 @@ use crate::{
         AllNodes,
     },
     code::{
-        OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_MINUS,
-        OP_MUL, OP_NOT_EQUAL, OP_POP, OP_SUB, OP_TRUE,
+        make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_JUMP,
+        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_POP, OP_SUB, OP_TRUE,
     },
     object::{objects::Integer, AllObjects},
 };
@@ -24,6 +24,11 @@ impl Compiler {
                 }
             }
             AllNodes::Statements(stmt) => match stmt {
+                AllStatements::Block(b) => {
+                    for stmt in b.statements {
+                        self.compile(AllNodes::Statements(stmt))?;
+                    }
+                }
                 AllStatements::Expression(stmt) => self.compile_expression_statement(stmt)?,
                 _ => todo!(),
             },
@@ -32,6 +37,7 @@ impl Compiler {
                 AllExpressions::Boolean(v) => self.compile_boolean_literal(v)?,
                 AllExpressions::PrefixExpression(v) => self.compile_prefix_expression(v)?,
                 AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
+                AllExpressions::IfExpression(v) => self.compile_if_expression(v)?,
                 _ => todo!(),
             },
         }
@@ -92,6 +98,52 @@ impl Compiler {
         };
 
         Ok(())
+    }
+
+    fn compile_if_expression(&mut self, expr: expressions::IfExpression) -> Result<()> {
+        self.compile(AllNodes::Expressions(*expr.condition))?;
+
+        // Emit an `OP_JUMP_NOT_TRUTHY` with a bogus value
+        let jump_not_truthy_position = self.emit(OP_JUMP_NOT_TRUTHY, &[9999]);
+
+        self.compile(AllNodes::Statements(AllStatements::Block(expr.consequence)))?;
+        if self.last_instruction.opcode == OP_POP {
+            self.remove_last_pop();
+        }
+
+        if expr.alternative.is_none() {
+            let after_consequence_pos = self.instructions.len();
+            self.change_operand(jump_not_truthy_position, after_consequence_pos);
+        } else {
+            // Emit an `OP_JUMP` with a bogus value
+            let jump_position = self.emit(OP_JUMP, &[9999]);
+
+            let after_consequence_pos = self.instructions.len();
+            self.change_operand(jump_not_truthy_position, after_consequence_pos);
+
+            self.compile(AllNodes::Statements(AllStatements::Block(
+                expr.alternative.unwrap(),
+            )))?;
+
+            if self.last_instruction.opcode == OP_POP {
+                self.remove_last_pop();
+            }
+
+            let after_alternative_pos = self.instructions.len();
+            self.change_operand(jump_position, after_alternative_pos);
+        }
+
+        Ok(())
+    }
+
+    fn change_operand(&mut self, op_pos: usize, operand: usize) {
+        let op = self.instructions[op_pos];
+        let new_instruction = make(op, &[operand]);
+
+        // replace the instructions bytes with the new instruction
+        for i in 0..new_instruction.len() {
+            self.instructions[op_pos + i] = new_instruction[i];
+        }
     }
 
     fn compile_integer_literal(&mut self, v: expressions::IntegerLiteral) -> Result<()> {

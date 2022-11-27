@@ -136,7 +136,9 @@ mod tests {
             ("!5", Bool(false)),
             ("!!true", Bool(true)),
             ("!!false", Bool(false)),
-            // ("!!5", Bool(true)),
+            ("!!5", Bool(true)),
+            ("if(true) { 5; }", Int(5)),
+            ("1; 2; 3; if(false) { 5; }; 10", Int(10)),
         ];
 
         for tc in test_cases {
