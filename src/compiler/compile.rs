@@ -7,7 +7,7 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_JUMP,
-        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_POP, OP_SUB, OP_TRUE,
+        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SUB, OP_TRUE,
     },
     object::{objects::Integer, AllObjects},
 };
@@ -111,16 +111,15 @@ impl Compiler {
             self.remove_last_pop();
         }
 
+        // Emit an `OP_JUMP` with a bogus value
+        let jump_position = self.emit(OP_JUMP, &[9999]);
+
+        let after_consequence_pos = self.instructions.len();
+        self.change_operand(jump_not_truthy_position, after_consequence_pos);
+
         if expr.alternative.is_none() {
-            let after_consequence_pos = self.instructions.len();
-            self.change_operand(jump_not_truthy_position, after_consequence_pos);
+            self.emit(OP_NULL, &[]);
         } else {
-            // Emit an `OP_JUMP` with a bogus value
-            let jump_position = self.emit(OP_JUMP, &[9999]);
-
-            let after_consequence_pos = self.instructions.len();
-            self.change_operand(jump_not_truthy_position, after_consequence_pos);
-
             self.compile(AllNodes::Statements(AllStatements::Block(
                 expr.alternative.unwrap(),
             )))?;
@@ -128,10 +127,10 @@ impl Compiler {
             if self.last_instruction.opcode == OP_POP {
                 self.remove_last_pop();
             }
-
-            let after_alternative_pos = self.instructions.len();
-            self.change_operand(jump_position, after_alternative_pos);
         }
+
+        let after_alternative_pos = self.instructions.len();
+        self.change_operand(jump_position, after_alternative_pos);
 
         Ok(())
     }
@@ -141,9 +140,8 @@ impl Compiler {
         let new_instruction = make(op, &[operand]);
 
         // replace the instructions bytes with the new instruction
-        for i in 0..new_instruction.len() {
-            self.instructions[op_pos + i] = new_instruction[i];
-        }
+        self.instructions[op_pos..(op_pos + new_instruction.len())]
+            .copy_from_slice(&new_instruction);
     }
 
     fn compile_integer_literal(&mut self, v: expressions::IntegerLiteral) -> Result<()> {

@@ -3,7 +3,10 @@ mod run;
 use crate::{
     code::Instructions,
     compiler::ByteCode,
-    object::{objects::Boolean, AllObjects},
+    object::{
+        objects::{Boolean, Null},
+        AllObjects,
+    },
 };
 use anyhow::{anyhow, Result};
 
@@ -15,6 +18,9 @@ const TRUE: AllObjects = AllObjects::Boolean(Boolean { value: true });
 
 /// FALSE constant
 const FALSE: AllObjects = AllObjects::Boolean(Boolean { value: false });
+
+/// NULL constant
+const NULL: AllObjects = AllObjects::Null(Null);
 
 pub struct VM {
     /// the constants list obtained from the bytecode
@@ -137,8 +143,17 @@ mod tests {
             ("!!true", Bool(true)),
             ("!!false", Bool(false)),
             ("!!5", Bool(true)),
-            ("if(true) { 5; }", Int(5)),
-            ("1; 2; 3; if(false) { 5; }; 10", Int(10)),
+            ("if(true) { 10; }", Int(10)),
+            ("if (true) { 10 } else { 20 }", Int(10)),
+            ("if (false) { 10 } else { 20 } ", Int(20)),
+            ("if (1) { 10 }", Int(10)),
+            ("if (1 < 2) { 10 }", Int(10)),
+            ("if (1 < 2) { 10 } else { 20 }", Int(10)),
+            ("if (1 > 2) { 10 } else { 20 }", Int(20)),
+            ("if (1 > 2) { 10 }", Literal::Null),
+            ("if (false) { 10 }", Literal::Null),
+            ("!(if (false) { 5; })", Bool(true)),
+            ("if ((if (false) { 10 })) { 10 } else { 20 }", Int(20)),
         ];
 
         for tc in test_cases {
@@ -162,6 +177,7 @@ mod tests {
         match expected {
             Literal::Int(v) => test_integer_object(v, actual),
             Literal::Bool(v) => test_boolean_object(v, actual),
+            Literal::Null => test_null_object(actual),
         }
     }
 }

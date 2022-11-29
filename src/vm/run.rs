@@ -1,9 +1,9 @@
-use super::{FALSE, TRUE, VM};
+use super::{FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
     object::{objects::Integer, AllObjects, Object},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 
 impl VM {
     /// Runs the bytecode instructions from start to finish.
@@ -21,7 +21,9 @@ impl VM {
                 OP_POP => {
                     self.pop()?;
                 }
-                OP_JUMP_NOT_TRUTHY => self.run_jump_instruction()?,
+                OP_JUMP_NOT_TRUTHY => self.run_jump_not_truthy_instruction()?,
+                OP_JUMP => self.run_jump_instruction()?,
+                OP_NULL => self.push(NULL)?,
                 _ => {}
             }
             self.ip += 1;
@@ -77,20 +79,27 @@ impl VM {
         Ok(())
     }
 
-    fn run_jump_instruction(&mut self) -> Result<()> {
-        let condition = match self.pop()? {
+    fn run_jump_not_truthy_instruction(&mut self) -> Result<()> {
+        let condition = match Self::cast_obj_to_bool(self.pop()?) {
             AllObjects::Boolean(v) => v,
-            v => {
-                return Err(anyhow!(
-                    "expected a BOOLEAN condition, received {}",
-                    v.inspect()
-                ))
-            }
+            _ => unreachable!(),
         };
 
-        if condition.value {}
+        if !condition.value {
+            let jump_position = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+            self.ip = jump_position - 1; // since ip gets incremented at the end of the loop
+            return Ok(());
+        }
+
+        // consume the jump instruction
         self.ip += 2;
 
+        Ok(())
+    }
+
+    fn run_jump_instruction(&mut self) -> Result<()> {
+        let jump_position = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+        self.ip = jump_position - 1; // since ip gets incremented at in the loop
         Ok(())
     }
 
@@ -144,9 +153,17 @@ impl VM {
         let result = match self.pop()? {
             TRUE => FALSE,
             FALSE => TRUE,
+            NULL => TRUE,
             _ => FALSE,
         };
         self.push(result)
+    }
+
+    fn cast_obj_to_bool(obj: AllObjects) -> AllObjects {
+        match obj {
+            FALSE | NULL => FALSE,
+            _ => TRUE,
+        }
     }
 
     fn get_bool_constant(val: bool) -> AllObjects {

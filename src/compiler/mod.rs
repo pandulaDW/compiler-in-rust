@@ -246,12 +246,14 @@ mod tests {
                 "if (true) { 10; }; 3333;",
                 vec![Int(10), Int(3333)],
                 vec![
-                    make(OP_TRUE, &[]),             // 0000
-                    make(OP_JUMP_NOT_TRUTHY, &[7]), // 0001
-                    make(OP_CONSTANT, &[0]),        // 0004
-                    make(OP_POP, &[]),              // 0007
-                    make(OP_CONSTANT, &[1]),        // 0008
-                    make(OP_POP, &[]),              // 0011
+                    make(OP_TRUE, &[]),              // 0000
+                    make(OP_JUMP_NOT_TRUTHY, &[10]), // 0001
+                    make(OP_CONSTANT, &[0]),         // 0004
+                    make(OP_JUMP, &[11]),            // 0007
+                    make(OP_NULL, &[]),              // 0010
+                    make(OP_POP, &[]),               // 0011
+                    make(OP_CONSTANT, &[1]),         // 0012
+                    make(OP_POP, &[]),               // 0015
                 ],
             ),
             (
@@ -281,6 +283,7 @@ pub mod test_helpers {
     pub enum Literal {
         Int(i64),
         Bool(bool),
+        Null,
     }
 
     // input, expectedConstants, expectedInstructions
@@ -316,6 +319,7 @@ pub mod test_helpers {
             match constant {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
                 Literal::Bool(_) => {}
+                Literal::Null => {}
             }
         }
     }
@@ -339,6 +343,13 @@ pub mod test_helpers {
             AllObjects::Boolean(v) => assert_eq!(v.value, expected),
             _ => panic!("expected a boolean object"),
         };
+    }
+
+    pub fn test_null_object(actual: &AllObjects) {
+        match actual {
+            AllObjects::Null(_) => {}
+            _ => panic!("expected a null object"),
+        }
     }
 
     pub fn parse(input: &str) -> Program {
