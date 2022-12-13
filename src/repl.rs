@@ -1,15 +1,12 @@
 use crate::{
-    compiler::Compiler,
+    compiler::{Compiler, SymbolTable},
     lexer::Lexer,
-    object::{environment::Environment, Object},
+    object::{AllObjects, Object},
     parser::{Parser, TRACING_ENABLED},
     vm,
 };
 use clap::Parser as ClapParser;
-use std::{
-    io::{self, BufRead, Write},
-    rc::Rc,
-};
+use std::io::{self, BufRead, Write};
 
 const PROMPT: &str = ">> ";
 
@@ -30,7 +27,10 @@ pub fn start_repl<T: BufRead, U: Write>(input: &mut T, output: &mut U) -> io::Re
     greet(output)?;
 
     let mut text = String::new();
-    let program_env = Environment::new();
+
+    let mut constants = Vec::new();
+    let mut globals = Vec::new();
+    let mut symbol_table = SymbolTable::new();
 
     loop {
         write!(output, "{}", PROMPT)?;
@@ -45,7 +45,8 @@ pub fn start_repl<T: BufRead, U: Write>(input: &mut T, output: &mut U) -> io::Re
         }
 
         if !trimmed.is_empty() {
-            execute_program(&text, output, program_env.clone())?;
+            let result = execute_line_for_repl(&text, output, constants, globals, symbol_table)?;
+            (constants, globals, symbol_table) = result.unwrap();
         }
 
         text.clear();
@@ -88,11 +89,7 @@ const MONKEY_FACE: &str = r#"
            '-----'
 "#;
 
-pub fn execute_program<U: Write>(
-    text: &str,
-    output: &mut U,
-    _program_env: Rc<Environment>,
-) -> io::Result<()> {
+pub fn execute_program<U: Write>(text: &str, output: &mut U) -> io::Result<()> {
     let l = Lexer::new(text);
     let mut p = Parser::new(l);
     let program = p.parse_program();
@@ -122,4 +119,48 @@ pub fn execute_program<U: Write>(
     writeln!(output, "{}", stack_top.inspect())?;
 
     Ok(())
+}
+
+pub fn execute_line_for_repl<U: Write>(
+    text: &str,
+    output: &mut U,
+    constants: Vec<AllObjects>,
+    globals: Vec<AllObjects>,
+    symbol_table: SymbolTable,
+) -> io::Result<Option<(Vec<AllObjects>, Vec<AllObjects>, SymbolTable)>> {
+    let l = Lexer::new(text);
+    let mut p = Parser::new(l);
+    let program = p.parse_program();
+
+    if !p.errors.is_empty() {
+        write_parser_errors(&p.errors, output)?;
+        return Ok(None);
+    }
+
+    let mut comp = Compiler::new_with_state(symbol_table, constants);
+    if let Err(e) = comp.compile(program.make_node()) {
+        write!(output, "Woops! Compilation failed:\n {}\n", e)?;
+        return Ok(None);
+    }
+    let modified_constants = comp.constants.clone();
+    let modified_symbol_table = comp.symbol_table.clone();
+
+    let mut machine = vm::VM::new_with_global_store(comp.byte_code(), globals);
+    if let Err(e) = machine.run() {
+        write!(output, "Woops! Executing bytecode failed:\n {}\n", e)?;
+        return Ok(None);
+    }
+
+    let Some(stack_top) = machine.result() else {
+        writeln!(output, "Woops! Stack top is empty")?;
+        return Ok(None);
+    };
+
+    writeln!(output, "{}", stack_top.inspect())?;
+
+    Ok(Some((
+        modified_constants,
+        machine.globals,
+        modified_symbol_table,
+    )))
 }

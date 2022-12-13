@@ -38,6 +38,9 @@ pub struct VM {
     /// instruction pointer, which points the index of the currently executing opcode
     ip: usize,
 
+    /// holder of global variable objects
+    pub globals: Vec<AllObjects>,
+
     /// last popped stack element
     result: Option<AllObjects>,
 }
@@ -49,10 +52,18 @@ impl VM {
             constants: bytecode.constants,
             instructions: bytecode.instructions,
             stack: Vec::with_capacity(STACK_SIZE),
+            globals: Vec::new(),
             sp: 0,
             ip: 0,
             result: None,
         }
+    }
+
+    /// Creates a new VM with the given global variables (for the REPL)
+    pub fn new_with_global_store(bytecode: ByteCode, s: Vec<AllObjects>) -> Self {
+        let mut vm = Self::new(bytecode);
+        vm.globals = s;
+        vm
     }
 
     /// Return the top most element from the stack.
@@ -154,6 +165,9 @@ mod tests {
             ("if (false) { 10 }", Literal::Null),
             ("!(if (false) { 5; })", Bool(true)),
             ("if ((if (false) { 10 })) { 10 } else { 20 }", Int(20)),
+            ("let one = 1; one", Int(1)),
+            ("let one = 1; let two = 2; one + two", Int(3)),
+            ("let one = 1; let two = one + one; one + two", Int(3)),
         ];
 
         for tc in test_cases {

@@ -6,7 +6,7 @@ use crate::{
     object::AllObjects,
 };
 
-use self::symbol_table::SymbolTable;
+pub use self::symbol_table::SymbolTable;
 
 #[derive(Default, Clone)]
 struct EmittedInstruction {
@@ -19,13 +19,13 @@ pub struct Compiler {
     instructions: code::Instructions,
 
     /// constants is a slice that serves as our constant pool.
-    constants: Vec<AllObjects>,
+    pub constants: Vec<AllObjects>,
 
     /// very last instruction emitted
     last_instruction: EmittedInstruction,
 
     /// symbol table for all scopes
-    symbol_table: SymbolTable,
+    pub symbol_table: SymbolTable,
 
     /// the instruction before the last instruction
     previous_instruction: EmittedInstruction,
@@ -39,6 +39,17 @@ impl Compiler {
             constants: vec![],
             last_instruction: EmittedInstruction::default(),
             symbol_table: SymbolTable::new(),
+            previous_instruction: EmittedInstruction::default(),
+        }
+    }
+
+    /// Creates a new compiler with the given state (for the REPL)
+    pub fn new_with_state(symbol_table: SymbolTable, constants: Vec<AllObjects>) -> Self {
+        Self {
+            instructions: vec![],
+            constants,
+            last_instruction: EmittedInstruction::default(),
+            symbol_table,
             previous_instruction: EmittedInstruction::default(),
         }
     }
@@ -286,28 +297,28 @@ mod tests {
         use Literal::Int;
 
         let test_cases: Vec<CompilerTestCase> = vec![
-            // (
-            //     "let one = 1;
-            //     let two = 2;",
-            //     vec![Int(1), Int(2)],
-            //     vec![
-            //         make(OP_CONSTANT, &[0]),
-            //         make(OP_SET_GLOBAL, &[0]),
-            //         make(OP_CONSTANT, &[1]),
-            //         make(OP_SET_GLOBAL, &[1]),
-            //     ],
-            // ),
-            // (
-            //     "let one = 1;
-            //     one;",
-            //     vec![Int(1)],
-            //     vec![
-            //         make(OP_CONSTANT, &[0]),
-            //         make(OP_SET_GLOBAL, &[0]),
-            //         make(OP_GET_GLOBAL, &[0]),
-            //         make(OP_POP, &[]),
-            //     ],
-            // ),
+            (
+                "let one = 1;
+                let two = 2;",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_SET_GLOBAL, &[1]),
+                ],
+            ),
+            (
+                "let one = 1;
+                one;",
+                vec![Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_POP, &[]),
+                ],
+            ),
             (
                 "let one = 1;
                 let two = one;

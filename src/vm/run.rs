@@ -18,6 +18,8 @@ impl VM {
                 OP_FALSE => self.push(FALSE)?,
                 OP_MINUS => self.run_prefix_minus()?,
                 OP_BANG => self.run_prefix_bang()?,
+                OP_SET_GLOBAL => self.run_set_global_instruction()?,
+                OP_GET_GLOBAL => self.run_get_global_instruction()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -76,6 +78,30 @@ impl VM {
         }
         self.push(self.constants[const_index].clone())?;
         self.ip += 2;
+        Ok(())
+    }
+
+    fn run_set_global_instruction(&mut self) -> Result<()> {
+        let global_index = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+        self.ip += 2;
+
+        let last_pushed = self.pop()?;
+        if self.globals.get(global_index).is_none() {
+            self.globals.push(last_pushed);
+        } else {
+            self.globals[global_index] = last_pushed;
+        }
+
+        Ok(())
+    }
+
+    fn run_get_global_instruction(&mut self) -> Result<()> {
+        let global_index = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+        self.ip += 2;
+        let Some(v) = self.globals.get(global_index) else {
+            return Err(anyhow!("variable at index {global_index} not found"));
+        };
+        self.push(v.clone())?;
         Ok(())
     }
 

@@ -16,7 +16,7 @@ pub fn read_file<U: Write>(given_path: String, output: &mut U) -> Result<(), Box
     let file_path = std::path::Path::new(&given_path);
     let content = fs::read(file_path)?;
     let input = String::from_utf8(content)?;
-    execute_program(&input, output, Environment::new())?;
+    execute_program(&input, output)?;
 
     Ok(())
 }
