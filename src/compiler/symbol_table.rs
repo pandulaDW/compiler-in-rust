@@ -34,7 +34,7 @@ impl SymbolTable {
         }
     }
 
-    /// create and store a new `Symbol` definition
+    /// Create and store a new `Symbol` definition
     pub fn define(&mut self, name: &str) -> Symbol {
         let symbol = Symbol::new(name, GLOBAL_SCOPE, self.num_definitions);
         self.store.insert(name.to_string(), symbol.clone());
@@ -42,7 +42,8 @@ impl SymbolTable {
         symbol
     }
 
-    fn resolve(&self, name: &str) -> Option<&Symbol> {
+    /// Resolves and return the symbol associated with the name
+    pub fn resolve(&self, name: &str) -> Option<&Symbol> {
         self.store.get(name)
     }
 }

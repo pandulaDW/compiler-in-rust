@@ -286,17 +286,17 @@ mod tests {
         use Literal::Int;
 
         let test_cases: Vec<CompilerTestCase> = vec![
-            (
-                "let one = 1;
-                let two = 2;",
-                vec![Int(1), Int(2)],
-                vec![
-                    make(OP_CONSTANT, &[0]),
-                    make(OP_SET_GLOBAL, &[0]),
-                    make(OP_CONSTANT, &[1]),
-                    make(OP_SET_GLOBAL, &[1]),
-                ],
-            ),
+            // (
+            //     "let one = 1;
+            //     let two = 2;",
+            //     vec![Int(1), Int(2)],
+            //     vec![
+            //         make(OP_CONSTANT, &[0]),
+            //         make(OP_SET_GLOBAL, &[0]),
+            //         make(OP_CONSTANT, &[1]),
+            //         make(OP_SET_GLOBAL, &[1]),
+            //     ],
+            // ),
             // (
             //     "let one = 1;
             //     one;",
@@ -308,20 +308,20 @@ mod tests {
             //         make(OP_POP, &[]),
             //     ],
             // ),
-            // (
-            //     "let one = 1;
-            //     let two = one;
-            //     two;",
-            //     vec![Int(1)],
-            //     vec![
-            //         make(OP_CONSTANT, &[0]),
-            //         make(OP_SET_GLOBAL, &[0]),
-            //         make(OP_GET_GLOBAL, &[0]),
-            //         make(OP_SET_GLOBAL, &[1]),
-            //         make(OP_GET_GLOBAL, &[1]),
-            //         make(OP_POP, &[]),
-            //     ],
-            // ),
+            (
+                "let one = 1;
+                let two = one;
+                two;",
+                vec![Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_SET_GLOBAL, &[1]),
+                    make(OP_GET_GLOBAL, &[1]),
+                    make(OP_POP, &[]),
+                ],
+            ),
         ];
         run_compiler_tests(test_cases);
     }

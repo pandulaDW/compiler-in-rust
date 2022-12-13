@@ -6,9 +6,9 @@ use crate::{
         AllNodes,
     },
     code::{
-        make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_JUMP,
-        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB,
-        OP_TRUE,
+        make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
+        OP_GREATER_THAN, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
+        OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
     object::{objects::Integer, AllObjects},
 };
@@ -44,6 +44,7 @@ impl Compiler {
                 AllExpressions::PrefixExpression(v) => self.compile_prefix_expression(v)?,
                 AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
                 AllExpressions::IfExpression(v) => self.compile_if_expression(v)?,
+                AllExpressions::Identifier(v) => self.compile_identifier(v)?,
                 _ => todo!(),
             },
         }
@@ -59,6 +60,14 @@ impl Compiler {
         };
         self.compile(AllNodes::Expressions(*expr))?;
         self.emit(OP_POP, &[]);
+        Ok(())
+    }
+
+    fn compile_identifier(&mut self, v: expressions::Identifier) -> Result<()> {
+        let Some(symbol) = self.symbol_table.resolve(&v.value) else {
+            return Err(anyhow!("undefined variable {}", &v.value));
+        };
+        self.emit(OP_GET_GLOBAL, &[symbol.index]);
         Ok(())
     }
 
