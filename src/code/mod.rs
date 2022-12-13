@@ -27,6 +27,8 @@ pub const OP_BANG: Opcode = 13;
 pub const OP_JUMP_NOT_TRUTHY: Opcode = 14;
 pub const OP_JUMP: Opcode = 15;
 pub const OP_NULL: Opcode = 16;
+pub const OP_GET_GLOBAL: Opcode = 17;
+pub const OP_SET_GLOBAL: Opcode = 18;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -66,6 +68,8 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_JUMP_NOT_TRUTHY => Ok(Definition::new("OpJumpNotTruthy", vec![2])),
         OP_JUMP => Ok(Definition::new("OpJump", vec![2])),
         OP_NULL => Ok(Definition::new("OpNull", vec![])),
+        OP_GET_GLOBAL => Ok(Definition::new("OpGetGlobal", vec![2])),
+        OP_SET_GLOBAL => Ok(Definition::new("OpSetGlobal", vec![2])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }

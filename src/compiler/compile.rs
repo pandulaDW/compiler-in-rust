@@ -7,7 +7,8 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GREATER_THAN, OP_JUMP,
-        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SUB, OP_TRUE,
+        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB,
+        OP_TRUE,
     },
     object::{objects::Integer, AllObjects},
 };
@@ -24,6 +25,11 @@ impl Compiler {
                 }
             }
             AllNodes::Statements(stmt) => match stmt {
+                AllStatements::Let(s) => {
+                    self.compile(AllNodes::Expressions(*s.value))?;
+                    let symbol = self.symbol_table.define(&s.name.value);
+                    self.emit(OP_SET_GLOBAL, &[symbol.index]);
+                }
                 AllStatements::Block(b) => {
                     for stmt in b.statements {
                         self.compile(AllNodes::Statements(stmt))?;

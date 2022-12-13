@@ -1,9 +1,12 @@
 mod compile;
+mod symbol_table;
 
 use crate::{
     code::{self, make, Opcode},
     object::AllObjects,
 };
+
+use self::symbol_table::SymbolTable;
 
 #[derive(Default, Clone)]
 struct EmittedInstruction {
@@ -21,6 +24,9 @@ pub struct Compiler {
     /// very last instruction emitted
     last_instruction: EmittedInstruction,
 
+    /// symbol table for all scopes
+    symbol_table: SymbolTable,
+
     /// the instruction before the last instruction
     previous_instruction: EmittedInstruction,
 }
@@ -32,6 +38,7 @@ impl Compiler {
             instructions: vec![],
             constants: vec![],
             last_instruction: EmittedInstruction::default(),
+            symbol_table: SymbolTable::new(),
             previous_instruction: EmittedInstruction::default(),
         }
     }
@@ -270,6 +277,51 @@ mod tests {
                     make(OP_POP, &[]),               // 0017
                 ],
             ),
+        ];
+        run_compiler_tests(test_cases);
+    }
+
+    #[test]
+    fn test_global_let_statements() {
+        use Literal::Int;
+
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "let one = 1;
+                let two = 2;",
+                vec![Int(1), Int(2)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_SET_GLOBAL, &[1]),
+                ],
+            ),
+            // (
+            //     "let one = 1;
+            //     one;",
+            //     vec![Int(1)],
+            //     vec![
+            //         make(OP_CONSTANT, &[0]),
+            //         make(OP_SET_GLOBAL, &[0]),
+            //         make(OP_GET_GLOBAL, &[0]),
+            //         make(OP_POP, &[]),
+            //     ],
+            // ),
+            // (
+            //     "let one = 1;
+            //     let two = one;
+            //     two;",
+            //     vec![Int(1)],
+            //     vec![
+            //         make(OP_CONSTANT, &[0]),
+            //         make(OP_SET_GLOBAL, &[0]),
+            //         make(OP_GET_GLOBAL, &[0]),
+            //         make(OP_SET_GLOBAL, &[1]),
+            //         make(OP_GET_GLOBAL, &[1]),
+            //         make(OP_POP, &[]),
+            //     ],
+            // ),
         ];
         run_compiler_tests(test_cases);
     }
