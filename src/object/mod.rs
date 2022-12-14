@@ -1,6 +1,5 @@
 use std::fmt::{self, Display};
 
-pub mod environment;
 pub mod objects;
 
 pub trait Object {
@@ -17,7 +16,7 @@ pub enum ObjectType {
     Error,
     Return,
     Function,
-    BuiltInFunction,
+    _BuiltInFunction,
     Array,
     HashMap,
 }
@@ -32,7 +31,7 @@ impl Display for ObjectType {
             ObjectType::Error => "ERROR",
             ObjectType::Return => "RETURN",
             ObjectType::Function => "FUNCTION",
-            ObjectType::BuiltInFunction => "BUILTIN_FUNCTION",
+            ObjectType::_BuiltInFunction => "BUILTIN_FUNCTION",
             ObjectType::Array => "ARRAY",
             ObjectType::HashMap => "HASH_MAP",
         };
@@ -49,12 +48,12 @@ pub enum AllObjects {
     StringObj(objects::StringObj),
     Boolean(objects::Boolean),
     Null(objects::Null),
-    Error(objects::Error),
-    ReturnValue(Box<AllObjects>),
-    Function(objects::FunctionObj),
-    BuiltinFunction(objects::BuiltinFunctionObj),
-    ArrayObj(objects::ArrayObj),
-    HashMap(objects::HashMapObj),
+    _Error(objects::Error),
+    _ReturnValue(Box<AllObjects>),
+    _Function(objects::FunctionObj),
+    _BuiltinFunction(objects::BuiltinFunctionObj),
+    _ArrayObj(objects::ArrayObj),
+    _HashMap(objects::HashMapObj),
 }
 
 impl Object for AllObjects {
@@ -64,12 +63,12 @@ impl Object for AllObjects {
             Self::StringObj(v) => v.inspect(),
             Self::Boolean(v) => v.inspect(),
             Self::Null(v) => v.inspect(),
-            Self::Error(v) => v.inspect(),
-            Self::ReturnValue(v) => v.inspect(),
-            Self::Function(v) => v.inspect(),
-            Self::BuiltinFunction(v) => v.inspect(),
-            Self::ArrayObj(v) => v.inspect(),
-            Self::HashMap(v) => v.inspect(),
+            Self::_Error(v) => v.inspect(),
+            Self::_ReturnValue(v) => v.inspect(),
+            Self::_Function(v) => v.inspect(),
+            Self::_BuiltinFunction(v) => v.inspect(),
+            Self::_ArrayObj(v) => v.inspect(),
+            Self::_HashMap(v) => v.inspect(),
         }
     }
 }
@@ -81,17 +80,17 @@ impl AllObjects {
             Self::StringObj(_) => ObjectType::String,
             Self::Boolean(_) => ObjectType::Boolean,
             Self::Null(_) => ObjectType::Null,
-            Self::Error(_) => ObjectType::Error,
-            Self::ReturnValue(_) => ObjectType::Return,
-            Self::Function(_) => ObjectType::Function,
-            Self::BuiltinFunction(_) => ObjectType::Function,
-            Self::ArrayObj(_) => ObjectType::Array,
-            Self::HashMap(_) => ObjectType::HashMap,
+            Self::_Error(_) => ObjectType::Error,
+            Self::_ReturnValue(_) => ObjectType::Return,
+            Self::_Function(_) => ObjectType::Function,
+            Self::_BuiltinFunction(_) => ObjectType::Function,
+            Self::_ArrayObj(_) => ObjectType::Array,
+            Self::_HashMap(_) => ObjectType::HashMap,
         }
     }
 
-    pub fn new_error(message: &str) -> Self {
-        Self::Error(objects::Error {
+    pub fn _new_error(message: &str) -> Self {
+        Self::_Error(objects::Error {
             message: message.to_string(),
         })
     }
@@ -104,15 +103,15 @@ impl AllObjects {
         self.object_type() == ObjectType::Boolean
     }
 
-    pub fn is_null(&self) -> bool {
+    pub fn _is_null(&self) -> bool {
         self.object_type() == ObjectType::Null
     }
 
-    pub fn is_string(&self) -> bool {
+    pub fn _is_string(&self) -> bool {
         self.object_type() == ObjectType::String
     }
 
-    pub fn is_error(&self) -> bool {
+    pub fn _is_error(&self) -> bool {
         self.object_type() == ObjectType::Error
     }
 }

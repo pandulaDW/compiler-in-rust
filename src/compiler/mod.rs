@@ -336,6 +336,31 @@ mod tests {
         ];
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_string_expressions() {
+        use Literal::Str;
+
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                r#" "monkey" "#,
+                vec![Str("monkey")],
+                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
+            ),
+            (
+                r#" "mon" + "key" "#,
+                vec![Str("mon"), Str("key")],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_ADD, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]
@@ -346,6 +371,7 @@ pub mod test_helpers {
     pub enum Literal {
         Int(i64),
         Bool(bool),
+        Str(&'static str),
         Null,
     }
 
@@ -381,6 +407,7 @@ pub mod test_helpers {
         for (i, constant) in expected.into_iter().enumerate() {
             match constant {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
+                Literal::Str(_v) => {}
                 Literal::Bool(_) => {}
                 Literal::Null => {}
             }

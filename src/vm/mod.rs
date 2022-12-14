@@ -191,6 +191,7 @@ mod tests {
         match expected {
             Literal::Int(v) => test_integer_object(v, actual),
             Literal::Bool(v) => test_boolean_object(v, actual),
+            Literal::Str(_v) => {}
             Literal::Null => test_null_object(actual),
         }
     }

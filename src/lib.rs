@@ -7,7 +7,6 @@ mod parser;
 mod repl;
 mod vm;
 
-pub use object::environment::Environment;
 pub use repl::{execute_program, start_repl};
 use std::{error::Error, fs, io::Write};
 

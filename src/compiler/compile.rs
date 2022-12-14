@@ -10,7 +10,10 @@ use crate::{
         OP_GREATER_THAN, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
         OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
-    object::{objects::Integer, AllObjects},
+    object::{
+        objects::{Integer, StringObj},
+        AllObjects,
+    },
 };
 use anyhow::{anyhow, Ok, Result};
 
@@ -40,6 +43,7 @@ impl Compiler {
             },
             AllNodes::Expressions(expr) => match expr {
                 AllExpressions::IntegerLiteral(v) => self.compile_integer_literal(v)?,
+                AllExpressions::StringLiteral(v) => self.compile_string_literal(v)?,
                 AllExpressions::Boolean(v) => self.compile_boolean_literal(v)?,
                 AllExpressions::PrefixExpression(v) => self.compile_prefix_expression(v)?,
                 AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
@@ -162,6 +166,13 @@ impl Compiler {
     fn compile_integer_literal(&mut self, v: expressions::IntegerLiteral) -> Result<()> {
         let integer = AllObjects::Integer(Integer { value: v.value });
         let constant_index = self.add_constant(integer);
+        self.emit(OP_CONSTANT, &[constant_index]);
+        Ok(())
+    }
+
+    fn compile_string_literal(&mut self, v: expressions::StringLiteral) -> Result<()> {
+        let string_obj = AllObjects::StringObj(StringObj::new(&v.token.literal));
+        let constant_index = self.add_constant(string_obj);
         self.emit(OP_CONSTANT, &[constant_index]);
         Ok(())
     }

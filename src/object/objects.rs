@@ -1,4 +1,4 @@
-use super::{environment::Environment, AllObjects, Object};
+use super::{AllObjects, Object};
 use crate::ast::{expressions::Identifier, statements::BlockStatement};
 use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 
@@ -16,6 +16,14 @@ impl Object for Integer {
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct StringObj {
     pub value: Rc<String>,
+}
+
+impl StringObj {
+    pub fn new(v: &str) -> Self {
+        Self {
+            value: Rc::new(v.to_string()),
+        }
+    }
 }
 
 impl Object for StringObj {
@@ -67,7 +75,6 @@ pub struct FunctionObj {
     pub name: String,
     pub body: BlockStatement,
     pub parameters: Vec<Identifier>,
-    pub env: Rc<Environment>,
 }
 
 impl PartialEq for FunctionObj {
@@ -101,13 +108,12 @@ impl Object for FunctionObj {
 pub struct BuiltinFunctionObj {
     pub fn_name: String,
     pub parameters: ParamsType,
-    pub func: fn(Rc<Environment>) -> AllObjects,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum ParamsType {
-    Fixed(Vec<String>),
-    Variadic,
+    _Fixed(Vec<String>),
+    _Variadic,
 }
 
 impl Object for BuiltinFunctionObj {
