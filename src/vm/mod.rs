@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_vm_works() {
-        use Literal::{Bool, Int};
+        use Literal::{Bool, Int, Str};
 
         // input, expected
         let test_cases = vec![
@@ -168,6 +168,9 @@ mod tests {
             ("let one = 1; one", Int(1)),
             ("let one = 1; let two = 2; one + two", Int(3)),
             ("let one = 1; let two = one + one; one + two", Int(3)),
+            (r#" "monkey" "#, Str("monkey")),
+            (r#" "mon" + "key" "#, Str("monkey")),
+            (r#" "mon" + "key" + "banana" "#, Str("monkeybanana")),
         ];
 
         for tc in test_cases {
@@ -191,7 +194,7 @@ mod tests {
         match expected {
             Literal::Int(v) => test_integer_object(v, actual),
             Literal::Bool(v) => test_boolean_object(v, actual),
-            Literal::Str(_v) => {}
+            Literal::Str(v) => test_string_object(v, actual),
             Literal::Null => test_null_object(actual),
         }
     }

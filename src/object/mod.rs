@@ -107,7 +107,7 @@ impl AllObjects {
         self.object_type() == ObjectType::Null
     }
 
-    pub fn _is_string(&self) -> bool {
+    pub fn is_string(&self) -> bool {
         self.object_type() == ObjectType::String
     }
 

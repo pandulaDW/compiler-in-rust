@@ -407,9 +407,9 @@ pub mod test_helpers {
         for (i, constant) in expected.into_iter().enumerate() {
             match constant {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
-                Literal::Str(_v) => {}
-                Literal::Bool(_) => {}
-                Literal::Null => {}
+                Literal::Str(v) => test_string_object(v, &actual[i]),
+                Literal::Bool(v) => test_boolean_object(v, &actual[i]),
+                Literal::Null => test_null_object(&actual[i]),
             }
         }
     }
@@ -426,6 +426,13 @@ pub mod test_helpers {
             AllObjects::Integer(v) => assert_eq!(v.value, expected),
             _ => panic!("expected an integer object"),
         };
+    }
+
+    pub fn test_string_object(expected: &str, actual: &AllObjects) {
+        match actual {
+            AllObjects::StringObj(v) => assert_eq!(*v.value, expected),
+            _ => panic!("expected an integer object"),
+        }
     }
 
     pub fn test_boolean_object(expected: bool, actual: &AllObjects) {

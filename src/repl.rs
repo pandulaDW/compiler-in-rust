@@ -45,8 +45,8 @@ pub fn start_repl<T: BufRead, U: Write>(input: &mut T, output: &mut U) -> io::Re
         }
 
         if !trimmed.is_empty() {
-            let result = execute_line_for_repl(&text, output, constants, globals, symbol_table)?;
-            (constants, globals, symbol_table) = result.unwrap();
+            (constants, globals, symbol_table) =
+                execute_line_for_repl(&text, output, constants, globals, symbol_table)?;
         }
 
         text.clear();
@@ -127,20 +127,20 @@ pub fn execute_line_for_repl<U: Write>(
     constants: Vec<AllObjects>,
     globals: Vec<AllObjects>,
     symbol_table: SymbolTable,
-) -> io::Result<Option<(Vec<AllObjects>, Vec<AllObjects>, SymbolTable)>> {
+) -> io::Result<(Vec<AllObjects>, Vec<AllObjects>, SymbolTable)> {
     let l = Lexer::new(text);
     let mut p = Parser::new(l);
     let program = p.parse_program();
 
     if !p.errors.is_empty() {
         write_parser_errors(&p.errors, output)?;
-        return Ok(None);
+        return Ok((constants, globals, symbol_table));
     }
 
     let mut comp = Compiler::new_with_state(symbol_table, constants);
     if let Err(e) = comp.compile(program.make_node()) {
         write!(output, "Woops! Compilation failed:\n {}\n", e)?;
-        return Ok(None);
+        return Ok((comp.constants, globals, comp.symbol_table));
     }
     let modified_constants = comp.constants.clone();
     let modified_symbol_table = comp.symbol_table.clone();
@@ -148,19 +148,15 @@ pub fn execute_line_for_repl<U: Write>(
     let mut machine = vm::VM::new_with_global_store(comp.byte_code(), globals);
     if let Err(e) = machine.run() {
         write!(output, "Woops! Executing bytecode failed:\n {}\n", e)?;
-        return Ok(None);
+        return Ok((modified_constants, machine.globals, modified_symbol_table));
     }
 
     let Some(stack_top) = machine.result() else {
         writeln!(output, "Woops! Stack top is empty")?;
-        return Ok(None);
+        return Ok((modified_constants, machine.globals, modified_symbol_table));
     };
 
     writeln!(output, "{}", stack_top.inspect())?;
 
-    Ok(Some((
-        modified_constants,
-        machine.globals,
-        modified_symbol_table,
-    )))
+    Ok((modified_constants, machine.globals, modified_symbol_table))
 }
