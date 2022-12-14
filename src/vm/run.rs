@@ -1,7 +1,10 @@
 use super::{FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
-    object::{objects::Integer, AllObjects, Object},
+    object::{
+        objects::{Integer, StringObj},
+        AllObjects, Object,
+    },
 };
 use anyhow::{anyhow, Ok, Result};
 
@@ -35,23 +38,49 @@ impl VM {
     }
 
     fn run_arithmetic_operations(&mut self, op: Opcode) -> Result<()> {
-        let right_value = match self.pop()? {
-            AllObjects::Integer(v) => v,
-            v => return Err(anyhow!("expected an INTEGER, found {}", v.inspect())),
-        };
-        let left_value = match self.pop()? {
-            AllObjects::Integer(v) => v,
-            v => return Err(anyhow!("expected an INTEGER, FOUND {}", v.inspect())),
-        };
-        let result = match op {
-            OP_ADD => left_value.value + right_value.value,
-            OP_SUB => left_value.value - right_value.value,
-            OP_MUL => left_value.value * right_value.value,
-            OP_DIV => left_value.value / right_value.value,
-            _ => unreachable!(),
-        };
+        let right = self.pop()?;
+        let left = self.pop()?;
 
-        self.push(AllObjects::Integer(Integer { value: result }))
+        if left.is_string() && right.is_string() {
+            if op != OP_ADD {
+                return Err(anyhow!("incorrect operation on strings"));
+            }
+
+            let right_val = match right {
+                AllObjects::StringObj(v) => v,
+                _ => unreachable!(),
+            };
+            let left_val = match left {
+                AllObjects::StringObj(v) => v,
+                _ => unreachable!(),
+            };
+            let concatenated = format!("{}{}", left_val.value, right_val.value);
+            return self.push(AllObjects::StringObj(StringObj::new(&concatenated)));
+        }
+
+        if left.is_integer() && right.is_integer() {
+            let right_value = match right {
+                AllObjects::Integer(v) => v,
+                _ => unreachable!(),
+            };
+            let left_value = match left {
+                AllObjects::Integer(v) => v,
+                _ => unreachable!(),
+            };
+            let result = match op {
+                OP_ADD => left_value.value + right_value.value,
+                OP_SUB => left_value.value - right_value.value,
+                OP_MUL => left_value.value * right_value.value,
+                OP_DIV => left_value.value / right_value.value,
+                _ => unreachable!(),
+            };
+
+            return self.push(AllObjects::Integer(Integer { value: result }));
+        }
+
+        Err(anyhow!(
+            "addition is only supported between strings or integers"
+        ))
     }
 
     fn run_boolean_operations(&mut self, op: Opcode) -> Result<()> {
