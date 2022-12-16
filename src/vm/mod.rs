@@ -102,13 +102,12 @@ impl VM {
 mod tests {
     use crate::{
         compiler::{test_helpers::*, Compiler},
-        object::AllObjects,
         vm::VM,
     };
 
     #[test]
     fn test_vm_works() {
-        use Literal::{Bool, Int, Str};
+        use Literal::{Arr, Bool, Int, Str};
 
         // input, expected
         let test_cases = vec![
@@ -171,6 +170,12 @@ mod tests {
             (r#" "monkey" "#, Str("monkey")),
             (r#" "mon" + "key" "#, Str("monkey")),
             (r#" "mon" + "key" + "banana" "#, Str("monkeybanana")),
+            ("[]", Arr(vec![])),
+            ("[1, 2, 3]", Arr(vec![Int(1), Int(2), Int(3)])),
+            (
+                "[1 + 2, 3 - 4, \"foo\", 5 * 6, true]",
+                Arr(vec![Int(3), Int(-1), Str("foo"), Int(30), Bool(true)]),
+            ),
         ];
 
         for tc in test_cases {
@@ -186,16 +191,7 @@ mod tests {
             }
 
             let stack_elem = vm.result();
-            helper_test_expected_object(tc.1, stack_elem.unwrap());
-        }
-    }
-
-    fn helper_test_expected_object(expected: Literal, actual: &AllObjects) {
-        match expected {
-            Literal::Int(v) => test_integer_object(v, actual),
-            Literal::Bool(v) => test_boolean_object(v, actual),
-            Literal::Str(v) => test_string_object(v, actual),
-            Literal::Null => test_null_object(actual),
+            test_expected_object(tc.1, stack_elem.unwrap());
         }
     }
 }

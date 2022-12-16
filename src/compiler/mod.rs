@@ -361,6 +361,45 @@ mod tests {
 
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_array_literals() {
+        use Literal::Int;
+
+        let test_cases: Vec<CompilerTestCase> = vec![
+            ("[]", vec![], vec![make(OP_ARRAY, &[0]), make(OP_POP, &[])]),
+            (
+                "[1, 2, 3]",
+                vec![Int(1), Int(2), Int(3)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_ARRAY, &[3]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "[1 + 2, 3 - 4, 5 * 6]",
+                vec![Int(1), Int(2), Int(3), Int(4), Int(5), Int(6)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_ADD, &[]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_SUB, &[]),
+                    make(OP_CONSTANT, &[4]),
+                    make(OP_CONSTANT, &[5]),
+                    make(OP_MUL, &[]),
+                    make(OP_ARRAY, &[3]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]
@@ -372,6 +411,7 @@ pub mod test_helpers {
         Int(i64),
         Bool(bool),
         Str(&'static str),
+        Arr(Vec<Literal>),
         Null,
     }
 
@@ -409,6 +449,7 @@ pub mod test_helpers {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
                 Literal::Str(v) => test_string_object(v, &actual[i]),
                 Literal::Bool(v) => test_boolean_object(v, &actual[i]),
+                Literal::Arr(_v) => {}
                 Literal::Null => test_null_object(&actual[i]),
             }
         }
@@ -449,9 +490,35 @@ pub mod test_helpers {
         }
     }
 
+    pub fn test_array_literal(expected: Vec<Literal>, actual: &AllObjects) {
+        let arr = match actual {
+            AllObjects::ArrayObj(v) => v,
+            _ => panic!("expected an array object"),
+        };
+
+        let elements = arr.elements.borrow();
+
+        for (i, expected_el) in expected.into_iter().enumerate() {
+            let Some(actual_el) = elements.get(i) else {
+                panic!("element at {i} should exist");
+            };
+            test_expected_object(expected_el, actual_el);
+        }
+    }
+
     pub fn parse(input: &str) -> Program {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
         p.parse_program()
+    }
+
+    pub fn test_expected_object(expected: Literal, actual: &AllObjects) {
+        match expected {
+            Literal::Int(v) => test_integer_object(v, actual),
+            Literal::Bool(v) => test_boolean_object(v, actual),
+            Literal::Str(v) => test_string_object(v, actual),
+            Literal::Arr(v) => test_array_literal(v, actual),
+            Literal::Null => test_null_object(actual),
+        }
     }
 }

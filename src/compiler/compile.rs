@@ -6,7 +6,7 @@ use crate::{
         AllNodes,
     },
     code::{
-        make, OP_ADD, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
+        make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
         OP_GREATER_THAN, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
         OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
@@ -48,6 +48,7 @@ impl Compiler {
                 AllExpressions::PrefixExpression(v) => self.compile_prefix_expression(v)?,
                 AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
                 AllExpressions::IfExpression(v) => self.compile_if_expression(v)?,
+                AllExpressions::ArrayLiteral(v) => self.compile_array_literal(v)?,
                 AllExpressions::Identifier(v) => self.compile_identifier(v)?,
                 _ => todo!(),
             },
@@ -116,6 +117,15 @@ impl Compiler {
             v => return Err(anyhow!("unknown prefix expression: {v}")),
         };
 
+        Ok(())
+    }
+
+    fn compile_array_literal(&mut self, expr: expressions::ArrayLiteral) -> Result<()> {
+        let n_elements = expr.elements.len();
+        for e in expr.elements {
+            self.compile(AllNodes::Expressions(e))?;
+        }
+        self.emit(OP_ARRAY, &[n_elements]);
         Ok(())
     }
 

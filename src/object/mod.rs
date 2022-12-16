@@ -52,7 +52,7 @@ pub enum AllObjects {
     _ReturnValue(Box<AllObjects>),
     _Function(objects::FunctionObj),
     _BuiltinFunction(objects::BuiltinFunctionObj),
-    _ArrayObj(objects::ArrayObj),
+    ArrayObj(objects::ArrayObj),
     _HashMap(objects::HashMapObj),
 }
 
@@ -67,7 +67,7 @@ impl Object for AllObjects {
             Self::_ReturnValue(v) => v.inspect(),
             Self::_Function(v) => v.inspect(),
             Self::_BuiltinFunction(v) => v.inspect(),
-            Self::_ArrayObj(v) => v.inspect(),
+            Self::ArrayObj(v) => v.inspect(),
             Self::_HashMap(v) => v.inspect(),
         }
     }
@@ -84,7 +84,7 @@ impl AllObjects {
             Self::_ReturnValue(_) => ObjectType::Return,
             Self::_Function(_) => ObjectType::Function,
             Self::_BuiltinFunction(_) => ObjectType::Function,
-            Self::_ArrayObj(_) => ObjectType::Array,
+            Self::ArrayObj(_) => ObjectType::Array,
             Self::_HashMap(_) => ObjectType::HashMap,
         }
     }

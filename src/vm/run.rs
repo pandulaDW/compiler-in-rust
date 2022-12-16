@@ -2,7 +2,7 @@ use super::{FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
     object::{
-        objects::{Integer, StringObj},
+        objects::{ArrayObj, Integer, StringObj},
         AllObjects, Object,
     },
 };
@@ -23,6 +23,7 @@ impl VM {
                 OP_BANG => self.run_prefix_bang()?,
                 OP_SET_GLOBAL => self.run_set_global_instruction()?,
                 OP_GET_GLOBAL => self.run_get_global_instruction()?,
+                OP_ARRAY => self.run_array_literal_instruction()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -131,6 +132,21 @@ impl VM {
             return Err(anyhow!("variable at index {global_index} not found"));
         };
         self.push(v.clone())?;
+        Ok(())
+    }
+
+    fn run_array_literal_instruction(&mut self) -> Result<()> {
+        let arr_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+        self.ip += 2;
+        let mut elements = Vec::with_capacity(arr_len);
+
+        for _ in 0..arr_len {
+            let element = self.pop()?;
+            elements.push(element);
+        }
+        elements.reverse();
+
+        self.push(AllObjects::ArrayObj(ArrayObj::new(elements)))?;
         Ok(())
     }
 

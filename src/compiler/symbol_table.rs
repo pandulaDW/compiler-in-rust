@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 type SymbolScope = &'static str;
 
-const GLOBAL_SCOPE: &'static str = "GLOBAL";
+const GLOBAL_SCOPE: &str = "GLOBAL";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Symbol {

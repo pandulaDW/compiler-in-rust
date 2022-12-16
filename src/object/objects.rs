@@ -127,6 +127,14 @@ pub struct ArrayObj {
     pub elements: Rc<RefCell<Vec<AllObjects>>>,
 }
 
+impl ArrayObj {
+    pub fn new(v: Vec<AllObjects>) -> Self {
+        Self {
+            elements: Rc::new(RefCell::new(v)),
+        }
+    }
+}
+
 impl PartialEq for ArrayObj {
     fn eq(&self, other: &Self) -> bool {
         self.elements == other.elements
