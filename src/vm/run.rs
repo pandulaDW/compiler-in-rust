@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use super::{FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
     object::{
-        objects::{ArrayObj, Integer, StringObj},
+        objects::{ArrayObj, HashMapObj, Integer, StringObj},
         AllObjects, Object,
     },
 };
@@ -24,6 +26,7 @@ impl VM {
                 OP_SET_GLOBAL => self.run_set_global_instruction()?,
                 OP_GET_GLOBAL => self.run_get_global_instruction()?,
                 OP_ARRAY => self.run_array_literal_instruction()?,
+                OP_HASH => self.run_hash_literal_instruction()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -46,7 +49,6 @@ impl VM {
             if op != OP_ADD {
                 return Err(anyhow!("incorrect operation on strings"));
             }
-
             let right_val = match right {
                 AllObjects::StringObj(v) => v,
                 _ => unreachable!(),
@@ -75,12 +77,11 @@ impl VM {
                 OP_DIV => left_value.value / right_value.value,
                 _ => unreachable!(),
             };
-
             return self.push(AllObjects::Integer(Integer { value: result }));
         }
 
         Err(anyhow!(
-            "addition is only supported between strings or integers"
+            "arithmetic operations are only supported between strings or integers"
         ))
     }
 
@@ -147,6 +148,21 @@ impl VM {
         elements.reverse();
 
         self.push(AllObjects::ArrayObj(ArrayObj::new(elements)))?;
+        Ok(())
+    }
+
+    fn run_hash_literal_instruction(&mut self) -> Result<()> {
+        let map_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]) / 2;
+        self.ip += 2;
+        let mut map = HashMap::new();
+
+        for _ in 0..map_len {
+            let value = self.pop()?;
+            let key = self.pop()?;
+            map.insert(key, value);
+        }
+
+        self.push(AllObjects::HashMap(HashMapObj::new(map)))?;
         Ok(())
     }
 

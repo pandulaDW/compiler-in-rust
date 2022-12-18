@@ -168,6 +168,14 @@ pub struct HashMapObj {
     pub map: Rc<RefCell<HashMap<AllObjects, AllObjects>>>,
 }
 
+impl HashMapObj {
+    pub fn new(map: HashMap<AllObjects, AllObjects>) -> Self {
+        Self {
+            map: Rc::new(RefCell::new(map)),
+        }
+    }
+}
+
 impl PartialEq for HashMapObj {
     fn eq(&self, other: &Self) -> bool {
         self.inspect() == other.inspect()

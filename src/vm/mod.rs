@@ -100,6 +100,8 @@ impl VM {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{
         compiler::{test_helpers::*, Compiler},
         vm::VM,
@@ -107,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_vm_works() {
-        use Literal::{Arr, Bool, Int, Str};
+        use Literal::{Arr, Bool, Hash, Int, Str};
 
         // input, expected
         let test_cases = vec![
@@ -175,6 +177,27 @@ mod tests {
             (
                 "[1 + 2, 3 - 4, \"foo\", 5 * 6, true]",
                 Arr(vec![Int(3), Int(-1), Str("foo"), Int(30), Bool(true)]),
+            ),
+            ("{}", Hash(HashMap::new())),
+            (
+                "{1: 2, 3: 4, 5: 6}",
+                Hash(
+                    vec![(Int(1), Int(2)), (Int(3), Int(4)), (Int(5), Int(6))]
+                        .into_iter()
+                        .collect(),
+                ),
+            ),
+            (
+                "{1: 2 + 3, 4: 5 * 6,true: \"foo\"}",
+                Hash(
+                    vec![
+                        (Int(1), Int(5)),
+                        (Int(4), Int(30)),
+                        (Bool(true), Str("foo")),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
             ),
         ];
 

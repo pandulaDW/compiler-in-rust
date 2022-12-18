@@ -53,7 +53,7 @@ pub enum AllObjects {
     _Function(objects::FunctionObj),
     _BuiltinFunction(objects::BuiltinFunctionObj),
     ArrayObj(objects::ArrayObj),
-    _HashMap(objects::HashMapObj),
+    HashMap(objects::HashMapObj),
 }
 
 impl Object for AllObjects {
@@ -68,7 +68,7 @@ impl Object for AllObjects {
             Self::_Function(v) => v.inspect(),
             Self::_BuiltinFunction(v) => v.inspect(),
             Self::ArrayObj(v) => v.inspect(),
-            Self::_HashMap(v) => v.inspect(),
+            Self::HashMap(v) => v.inspect(),
         }
     }
 }
@@ -85,7 +85,7 @@ impl AllObjects {
             Self::_Function(_) => ObjectType::Function,
             Self::_BuiltinFunction(_) => ObjectType::Function,
             Self::ArrayObj(_) => ObjectType::Array,
-            Self::_HashMap(_) => ObjectType::HashMap,
+            Self::HashMap(_) => ObjectType::HashMap,
         }
     }
 

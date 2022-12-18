@@ -7,8 +7,8 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
-        OP_GREATER_THAN, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
-        OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
+        OP_GREATER_THAN, OP_HASH, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL,
+        OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
     object::{
         objects::{Integer, StringObj},
@@ -49,6 +49,7 @@ impl Compiler {
                 AllExpressions::InfixExpression(v) => self.compile_infix_expression(v)?,
                 AllExpressions::IfExpression(v) => self.compile_if_expression(v)?,
                 AllExpressions::ArrayLiteral(v) => self.compile_array_literal(v)?,
+                AllExpressions::HashLiteral(mut v) => self.compile_hash_literal(&mut v)?,
                 AllExpressions::Identifier(v) => self.compile_identifier(v)?,
                 _ => todo!(),
             },
@@ -126,6 +127,21 @@ impl Compiler {
             self.compile(AllNodes::Expressions(e))?;
         }
         self.emit(OP_ARRAY, &[n_elements]);
+        Ok(())
+    }
+
+    fn compile_hash_literal(&mut self, expr: &mut expressions::HashLiteral) -> Result<()> {
+        let n_keys = expr.pairs.len();
+        let mut keys: Vec<AllExpressions> = expr.pairs.keys().cloned().collect();
+        keys.sort_by_key(|expr| expr.to_string());
+
+        for key in keys {
+            let value = expr.pairs.remove(&key).unwrap();
+            self.compile(AllNodes::Expressions(key))?;
+            self.compile(AllNodes::Expressions(value))?;
+        }
+
+        self.emit(OP_HASH, &[n_keys * 2]);
         Ok(())
     }
 

@@ -400,19 +400,96 @@ mod tests {
 
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_hash_literals() {
+        use Literal::Int;
+
+        let test_cases: Vec<CompilerTestCase> = vec![
+            ("{}", vec![], vec![make(OP_HASH, &[0]), make(OP_POP, &[])]),
+            (
+                "{1: 2, 3: 4, 5: 6}",
+                vec![Int(1), Int(2), Int(3), Int(4), Int(5), Int(6)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_CONSTANT, &[4]),
+                    make(OP_CONSTANT, &[5]),
+                    make(OP_HASH, &[6]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "{1: 2 + 3, 4: 5 * 6}",
+                vec![Int(1), Int(2), Int(3), Int(4), Int(5), Int(6)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_ADD, &[]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_CONSTANT, &[4]),
+                    make(OP_CONSTANT, &[5]),
+                    make(OP_MUL, &[]),
+                    make(OP_HASH, &[4]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]
 pub mod test_helpers {
-    use super::{code::Instructions, Compiler};
-    use crate::{ast::program::Program, lexer::Lexer, object::AllObjects, parser::Parser};
+    use std::{collections::HashMap, fmt::Display, hash::Hash};
 
+    use super::{code::Instructions, Compiler};
+    use crate::{
+        ast::program::Program,
+        lexer::Lexer,
+        object::{AllObjects, Object},
+        parser::Parser,
+    };
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Literal {
         Int(i64),
         Bool(bool),
         Str(&'static str),
         Arr(Vec<Literal>),
+        Hash(HashMap<Literal, Literal>),
         Null,
+    }
+
+    impl Display for Literal {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let out = match self {
+                Self::Int(v) => format!("{}", v),
+                Self::Bool(v) => format!("{}", v),
+                Self::Str(v) => format!("{}", v),
+                Self::Arr(v) => format!("{:?}", v),
+                Self::Hash(v) => format!("{:?}", v),
+                Self::Null => "null".to_string(),
+            };
+            write!(f, "{out}")
+        }
+    }
+
+    impl Hash for Literal {
+        fn hash<H: std::hash::Hasher>(&self, _: &mut H) {
+            match self {
+                Literal::Int(v) => v.to_string(),
+                Literal::Bool(v) => v.to_string(),
+                Literal::Str(v) => v.to_string(),
+                Literal::Arr(_) => panic!("not implemented"),
+                Literal::Hash(_) => panic!("not implemented"),
+                Literal::Null => panic!("not implemented"),
+            };
+        }
     }
 
     // input, expectedConstants, expectedInstructions
@@ -449,7 +526,8 @@ pub mod test_helpers {
                 Literal::Int(v) => test_integer_object(v, &actual[i]),
                 Literal::Str(v) => test_string_object(v, &actual[i]),
                 Literal::Bool(v) => test_boolean_object(v, &actual[i]),
-                Literal::Arr(_v) => {}
+                Literal::Arr(v) => test_array_literal(v, &actual[i]),
+                Literal::Hash(mut v) => test_hash_literal(&mut v, &actual[i]),
                 Literal::Null => test_null_object(&actual[i]),
             }
         }
@@ -506,6 +584,32 @@ pub mod test_helpers {
         }
     }
 
+    pub fn test_hash_literal(expected: &mut HashMap<Literal, Literal>, actual: &AllObjects) {
+        let map_obj = match actual {
+            AllObjects::HashMap(v) => v,
+            _ => panic!("expected a hash literal"),
+        };
+
+        let map = map_obj.map.borrow();
+        let mut actual_keys: Vec<String> = map.keys().map(|key| key.inspect()).collect();
+        actual_keys.sort();
+
+        let mut expected_keys: Vec<String> = expected.keys().map(|v| v.to_string()).collect();
+        expected_keys.sort();
+
+        assert_eq!(actual_keys, expected_keys);
+
+        for key in map.keys() {
+            let actual_value = &map[key];
+            let expected_key = expected
+                .keys()
+                .find(|v| v.to_string() == key.inspect())
+                .unwrap(); // checked previously
+            let expected_value = expected[expected_key].clone();
+            test_expected_object(expected_value, actual_value);
+        }
+    }
+
     pub fn parse(input: &str) -> Program {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
@@ -518,6 +622,7 @@ pub mod test_helpers {
             Literal::Bool(v) => test_boolean_object(v, actual),
             Literal::Str(v) => test_string_object(v, actual),
             Literal::Arr(v) => test_array_literal(v, actual),
+            Literal::Hash(mut v) => test_hash_literal(&mut v, actual),
             Literal::Null => test_null_object(actual),
         }
     }
