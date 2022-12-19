@@ -7,8 +7,8 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
-        OP_GREATER_THAN, OP_HASH, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL,
-        OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
+        OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL,
+        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
     object::{
         objects::{Integer, StringObj},
@@ -39,7 +39,7 @@ impl Compiler {
                     }
                 }
                 AllStatements::Expression(stmt) => self.compile_expression_statement(stmt)?,
-                _ => todo!(),
+                _ => unimplemented!(),
             },
             AllNodes::Expressions(expr) => match expr {
                 AllExpressions::IntegerLiteral(v) => self.compile_integer_literal(v)?,
@@ -51,7 +51,8 @@ impl Compiler {
                 AllExpressions::ArrayLiteral(v) => self.compile_array_literal(v)?,
                 AllExpressions::HashLiteral(mut v) => self.compile_hash_literal(&mut v)?,
                 AllExpressions::Identifier(v) => self.compile_identifier(v)?,
-                _ => todo!(),
+                AllExpressions::IndexExpression(v) => self.compile_index_expression(v)?,
+                _ => unimplemented!(),
             },
         }
         Ok(())
@@ -141,7 +142,14 @@ impl Compiler {
             self.compile(AllNodes::Expressions(value))?;
         }
 
-        self.emit(OP_HASH, &[n_keys * 2]);
+        self.emit(OP_HASH, &[n_keys]);
+        Ok(())
+    }
+
+    fn compile_index_expression(&mut self, expr: expressions::IndexExpression) -> Result<()> {
+        self.compile(AllNodes::Expressions(*expr.left))?;
+        self.compile(AllNodes::Expressions(*expr.index))?;
+        self.emit(OP_INDEX, &[]);
         Ok(())
     }
 

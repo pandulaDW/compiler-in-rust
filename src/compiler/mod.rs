@@ -404,7 +404,6 @@ mod tests {
     #[test]
     fn test_hash_literals() {
         use Literal::Int;
-
         let test_cases: Vec<CompilerTestCase> = vec![
             ("{}", vec![], vec![make(OP_HASH, &[0]), make(OP_POP, &[])]),
             (
@@ -417,7 +416,7 @@ mod tests {
                     make(OP_CONSTANT, &[3]),
                     make(OP_CONSTANT, &[4]),
                     make(OP_CONSTANT, &[5]),
-                    make(OP_HASH, &[6]),
+                    make(OP_HASH, &[3]),
                     make(OP_POP, &[]),
                 ],
             ),
@@ -433,12 +432,48 @@ mod tests {
                     make(OP_CONSTANT, &[4]),
                     make(OP_CONSTANT, &[5]),
                     make(OP_MUL, &[]),
-                    make(OP_HASH, &[4]),
+                    make(OP_HASH, &[2]),
                     make(OP_POP, &[]),
                 ],
             ),
         ];
+        run_compiler_tests(test_cases);
+    }
 
+    #[test]
+    fn test_index_expressions() {
+        use Literal::Int;
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "[1, 2, 3][1 + 1]",
+                vec![Int(1), Int(2), Int(3), Int(1), Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_ARRAY, &[3]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_CONSTANT, &[4]),
+                    make(OP_ADD, &[]),
+                    make(OP_INDEX, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "{1: 2}[2 - 1]",
+                vec![Int(1), Int(2), Int(2), Int(1)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_HASH, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_SUB, &[]),
+                    make(OP_INDEX, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
         run_compiler_tests(test_cases);
     }
 }
@@ -468,9 +503,9 @@ pub mod test_helpers {
     impl Display for Literal {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let out = match self {
-                Self::Int(v) => format!("{}", v),
-                Self::Bool(v) => format!("{}", v),
-                Self::Str(v) => format!("{}", v),
+                Self::Int(v) => v.to_string(),
+                Self::Bool(v) => v.to_string(),
+                Self::Str(v) => v.to_string(),
                 Self::Arr(v) => format!("{:?}", v),
                 Self::Hash(v) => format!("{:?}", v),
                 Self::Null => "null".to_string(),

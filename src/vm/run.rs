@@ -5,10 +5,10 @@ use crate::{
     code::{self, *},
     object::{
         objects::{ArrayObj, HashMapObj, Integer, StringObj},
-        AllObjects, Object,
+        AllObjects, Object, ObjectType,
     },
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Result};
 
 impl VM {
     /// Runs the bytecode instructions from start to finish.
@@ -27,6 +27,7 @@ impl VM {
                 OP_GET_GLOBAL => self.run_get_global_instruction()?,
                 OP_ARRAY => self.run_array_literal_instruction()?,
                 OP_HASH => self.run_hash_literal_instruction()?,
+                OP_INDEX => self.run_index_expression()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -152,7 +153,7 @@ impl VM {
     }
 
     fn run_hash_literal_instruction(&mut self) -> Result<()> {
-        let map_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]) / 2;
+        let map_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
         self.ip += 2;
         let mut map = HashMap::new();
 
@@ -164,6 +165,51 @@ impl VM {
 
         self.push(AllObjects::HashMap(HashMapObj::new(map)))?;
         Ok(())
+    }
+
+    fn run_index_expression(&mut self) -> Result<()> {
+        let index = self.pop()?;
+        let indexable = self.pop()?;
+
+        if indexable.object_type() == ObjectType::Array {
+            let index = match index {
+                AllObjects::Integer(v) => v,
+                _ => return Err(anyhow!("index should be an integer")),
+            };
+            let index_usize: usize = match index.value.try_into() {
+                Ok(v) => v,
+                Err(_) => return Err(anyhow!("index should be a positive integer")),
+            };
+
+            let arr = match indexable {
+                AllObjects::ArrayObj(v) => v,
+                _ => unreachable!(),
+            };
+            let borrowed = arr.elements.borrow();
+            let Some(value) = borrowed.get(index_usize) else {
+                return Err(anyhow!("index out of bounds"));
+            };
+            self.push(value.clone())?;
+            return Ok(());
+        }
+
+        if indexable.object_type() == ObjectType::HashMap {
+            let map_obj = match indexable {
+                AllObjects::HashMap(v) => v,
+                _ => unreachable!(),
+            };
+            let borrowed = map_obj.map.borrow();
+            let value = match borrowed.get(&index) {
+                Some(v) => v.clone(),
+                None => NULL,
+            };
+            self.push(value)?;
+            return Ok(());
+        }
+
+        Err(anyhow!(
+            "indexing is only supported for arrays and hash-maps"
+        ))
     }
 
     fn run_jump_not_truthy_instruction(&mut self) -> Result<()> {
