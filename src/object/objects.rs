@@ -1,5 +1,5 @@
 use super::{AllObjects, Object};
-use crate::ast::{expressions::Identifier, statements::BlockStatement};
+use crate::code::Instructions;
 use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -63,44 +63,29 @@ impl Object for Error {
     }
 }
 
-/// Includes the name of the function and the definition of the function which wraps around in RC to be
-/// clonable to fit the API of the other clonable objects.
-///
-/// This definition of object.Function has the Parameters and Body fields. But it also has Env,
-/// a field that holds a pointer to an object.Environment, because functions in Monkey carry their
-/// own environment with them. That allows for closures, which “close over” the environment they’re
-/// defined in and can later access it.
 #[derive(Clone)]
-pub struct FunctionObj {
+pub struct CompiledFunctionObj {
     pub name: String,
-    pub body: BlockStatement,
-    pub parameters: Vec<Identifier>,
+    pub instructions: Instructions,
 }
 
-impl PartialEq for FunctionObj {
+impl PartialEq for CompiledFunctionObj {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
 }
 
-impl Eq for FunctionObj {}
+impl Eq for CompiledFunctionObj {}
 
-impl Hash for FunctionObj {
+impl Hash for CompiledFunctionObj {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.name.hash(state);
     }
 }
 
-impl Object for FunctionObj {
+impl Object for CompiledFunctionObj {
     fn inspect(&self) -> String {
-        let params = self
-            .parameters
-            .iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        format!("fn({}){{\n{}\n}}", params, self.body)
+        "fn(){}".to_string()
     }
 }
 

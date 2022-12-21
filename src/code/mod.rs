@@ -32,6 +32,9 @@ pub const OP_SET_GLOBAL: Opcode = 18;
 pub const OP_ARRAY: Opcode = 19;
 pub const OP_HASH: Opcode = 20;
 pub const OP_INDEX: Opcode = 21;
+pub const OP_CALL: Opcode = 22;
+pub const OP_RETURN_VALUE: Opcode = 23;
+pub const OP_RETURN: Opcode = 24;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -76,6 +79,9 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_ARRAY => Ok(Definition::new("OpArray", vec![2])),
         OP_HASH => Ok(Definition::new("OpHash", vec![2])),
         OP_INDEX => Ok(Definition::new("OpIndex", vec![0])),
+        OP_CALL => Ok(Definition::new("OpCall", vec![0])),
+        OP_RETURN_VALUE => Ok(Definition::new("OpReturnValue", vec![0])),
+        OP_RETURN => Ok(Definition::new("OpReturn", vec![0])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
