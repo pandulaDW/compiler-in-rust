@@ -2,7 +2,7 @@ mod compile;
 mod symbol_table;
 
 use crate::{
-    code::{self, make, Opcode},
+    code::{self, make, Instructions, Opcode},
     object::AllObjects,
 };
 
@@ -11,7 +11,13 @@ pub use self::symbol_table::SymbolTable;
 #[derive(Default, Clone)]
 struct EmittedInstruction {
     opcode: Opcode,
-    _position: usize,
+    position: usize,
+}
+
+impl EmittedInstruction {
+    fn new(opcode: Opcode, position: usize) -> Self {
+        Self { opcode, position }
+    }
 }
 
 pub struct Compiler {
@@ -29,17 +35,31 @@ pub struct Compiler {
 
     /// the instruction before the last instruction
     previous_instruction: EmittedInstruction,
+
+    /// contains all the scopes that would be encountered in the compilation process
+    scopes: Vec<CompilationScope>,
+
+    /// current active scope index
+    scope_index: usize,
 }
 
 impl Compiler {
     /// Creates a new compiler with empty instructions and constant pool.
     pub fn new() -> Self {
+        let main_scope = CompilationScope {
+            instructions: vec![],
+            last_instructions: EmittedInstruction::default(),
+            previous_instruction: EmittedInstruction::default(),
+        };
+
         Self {
             instructions: vec![],
             constants: vec![],
             last_instruction: EmittedInstruction::default(),
             symbol_table: SymbolTable::new(),
             previous_instruction: EmittedInstruction::default(),
+            scopes: vec![main_scope],
+            scope_index: 0,
         }
     }
 
@@ -51,48 +71,84 @@ impl Compiler {
             last_instruction: EmittedInstruction::default(),
             symbol_table,
             previous_instruction: EmittedInstruction::default(),
+            scopes: vec![],
+            scope_index: 0,
         }
     }
 
     /// Emits the byte-code instructions after compilation has finished.
-    pub fn byte_code(self) -> ByteCode {
+    pub fn byte_code(mut self) -> ByteCode {
         ByteCode {
-            instructions: self.instructions,
+            instructions: self.current_instructions().clone(),
             constants: self.constants,
         }
     }
 
-    /// Generates an instruction and add it to the results and the starting position of the
-    /// just-emitted instruction will be returned.
+    /// Generates an instruction and add it to the current scope and updates the last instruction.
+    /// the position of the just-emitted instruction will be returned.
     fn emit(&mut self, op: Opcode, operands: &[usize]) -> usize {
-        let mut instructions = make(op, operands);
-        let current_position = self.instructions.len();
-        self.instructions.append(&mut instructions);
+        let instructions = make(op, operands);
+        let pos_new_instruction = self.current_instructions().len();
+        self.current_instructions().extend_from_slice(&instructions);
 
-        self.set_last_instruction(op, current_position);
+        self.set_last_instruction(op, pos_new_instruction);
+        pos_new_instruction
+    }
 
-        current_position
+    /// Create a new scope and make it active
+    fn enter_scope(&mut self) {
+        let scope = CompilationScope {
+            instructions: vec![],
+            last_instructions: EmittedInstruction::default(),
+            previous_instruction: EmittedInstruction::default(),
+        };
+        self.scopes.push(scope);
+        self.scope_index += 1;
+    }
+
+    /// Removed the created scope and make the second-to-last one active
+    fn leave_scope(&mut self) -> Instructions {
+        let instructions = self.current_instructions().clone();
+        self.scopes.pop();
+        self.scope_index -= 1;
+        instructions
     }
 
     /// Set the last instruction and the last-to-previous instruction
     fn set_last_instruction(&mut self, opcode: Opcode, position: usize) {
-        self.previous_instruction = self.last_instruction.clone();
-        self.last_instruction = EmittedInstruction {
-            opcode,
-            _position: position,
-        };
+        let previous = self.scopes[self.scope_index].last_instructions.clone();
+        let last = EmittedInstruction::new(opcode, position);
+
+        self.scopes[self.scope_index].previous_instruction = previous;
+        self.scopes[self.scope_index].last_instructions = last;
     }
 
     /// Removes the last pop instruction
     fn remove_last_pop(&mut self) {
-        self.instructions.pop();
-        self.last_instruction = self.previous_instruction.clone();
+        let last = self.scopes[self.scope_index].last_instructions.clone();
+        let previous = self.scopes[self.scope_index].previous_instruction.clone();
+
+        let old = self.current_instructions();
+        let new = &old[..last.position];
+
+        self.scopes[self.scope_index].instructions = new.to_vec();
+        self.scopes[self.scope_index].last_instructions = previous;
     }
 
     /// Add the given constant to the constant pool and return it's index position.
     fn add_constant(&mut self, obj: AllObjects) -> usize {
         self.constants.push(obj);
         self.constants.len() - 1
+    }
+
+    /// Return the instruction set of the current active scope
+    fn current_instructions(&mut self) -> &mut code::Instructions {
+        &mut self.scopes[self.scope_index].instructions
+    }
+
+    /// Check if the last instruction is a POP instruction
+    fn last_instruction_is_pop(&self) -> bool {
+        self.scopes[self.scope_index].last_instructions.opcode == code::OP_POP
     }
 }
 
@@ -102,10 +158,17 @@ pub struct ByteCode {
     pub constants: Vec<AllObjects>,
 }
 
+struct CompilationScope {
+    instructions: code::Instructions,
+    last_instructions: EmittedInstruction,
+    previous_instruction: EmittedInstruction,
+}
+
 #[cfg(test)]
 mod tests {
     use super::code::*;
     use super::test_helpers::*;
+    use super::Compiler;
 
     #[test]
     fn test_integer_arithmetic() {
@@ -476,6 +539,53 @@ mod tests {
         ];
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    #[ignore = "reason"]
+    fn test_function_literals() {
+        use Literal::{Ins, Int};
+        let test_cases: Vec<CompilerTestCase> = vec![(
+            "fn() { return 5 + 10 }",
+            vec![
+                Int(5),
+                Int(10),
+                Ins(vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_ADD, &[]),
+                    make(OP_RETURN_VALUE, &[]),
+                ]),
+            ],
+            vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+        )];
+        run_compiler_tests(test_cases);
+    }
+
+    #[test]
+    fn test_compiler_scopes() {
+        let mut compiler = Compiler::new();
+        assert_eq!(compiler.scope_index, 0);
+
+        compiler.emit(OP_MUL, &[]);
+        assert_eq!(compiler.scopes[0].instructions.len(), 1);
+        assert_eq!(compiler.scopes[0].last_instructions.opcode, OP_MUL);
+
+        compiler.enter_scope();
+        assert_eq!(compiler.scope_index, 1);
+
+        compiler.emit(OP_SUB, &[]);
+        assert_eq!(compiler.scopes[1].instructions.len(), 1);
+        assert_eq!(compiler.scopes[1].last_instructions.opcode, OP_SUB);
+
+        compiler.leave_scope();
+        assert_eq!(compiler.scopes.len(), 1);
+        assert_eq!(compiler.scope_index, 0);
+
+        compiler.emit(OP_ADD, &[]);
+        assert_eq!(compiler.scopes[0].instructions.len(), 2);
+        assert_eq!(compiler.scopes[0].last_instructions.opcode, OP_ADD);
+        assert_eq!(compiler.scopes[0].previous_instruction.opcode, OP_MUL);
+    }
 }
 
 #[cfg(test)]
@@ -498,6 +608,7 @@ pub mod test_helpers {
         Arr(Vec<Literal>),
         Hash(HashMap<Literal, Literal>),
         Null,
+        Ins(Vec<Instructions>),
     }
 
     impl Display for Literal {
@@ -509,6 +620,7 @@ pub mod test_helpers {
                 Self::Arr(v) => format!("{:?}", v),
                 Self::Hash(v) => format!("{:?}", v),
                 Self::Null => "null".to_string(),
+                Self::Ins(v) => format!("{:?}", v),
             };
             write!(f, "{out}")
         }
@@ -520,9 +632,10 @@ pub mod test_helpers {
                 Literal::Int(v) => v.to_string(),
                 Literal::Bool(v) => v.to_string(),
                 Literal::Str(v) => v.to_string(),
-                Literal::Arr(_) => panic!("not implemented"),
-                Literal::Hash(_) => panic!("not implemented"),
-                Literal::Null => panic!("not implemented"),
+                Literal::Arr(_) => unimplemented!(),
+                Literal::Hash(_) => unimplemented!(),
+                Literal::Null => unimplemented!(),
+                Literal::Ins(_) => unimplemented!(),
             };
         }
     }
@@ -539,12 +652,12 @@ pub mod test_helpers {
             };
 
             let bytecode = compiler.byte_code();
-            test_instructions(tc.2, bytecode.instructions);
+            test_instructions(tc.2, &bytecode.instructions);
             test_constants(tc.1, bytecode.constants);
         }
     }
 
-    fn test_instructions(expected: Vec<Instructions>, actual: Instructions) {
+    fn test_instructions(expected: Vec<Instructions>, actual: &Instructions) {
         let concatted = concat_instructions(expected);
         assert_eq!(concatted.len(), actual.len());
 
@@ -564,6 +677,7 @@ pub mod test_helpers {
                 Literal::Arr(v) => test_array_literal(v, &actual[i]),
                 Literal::Hash(mut v) => test_hash_literal(&mut v, &actual[i]),
                 Literal::Null => test_null_object(&actual[i]),
+                Literal::Ins(v) => test_fn_instructions(v, &actual[i]),
             }
         }
     }
@@ -645,6 +759,14 @@ pub mod test_helpers {
         }
     }
 
+    pub fn test_fn_instructions(expected: Vec<Instructions>, actual: &AllObjects) {
+        let actual_ins = match actual {
+            AllObjects::CompiledFunction(v) => v,
+            _ => panic!("expected fn instructions"),
+        };
+        test_instructions(expected, &actual_ins.instructions);
+    }
+
     pub fn parse(input: &str) -> Program {
         let l = Lexer::new(input);
         let mut p = Parser::new(l);
@@ -659,6 +781,7 @@ pub mod test_helpers {
             Literal::Arr(v) => test_array_literal(v, actual),
             Literal::Hash(mut v) => test_hash_literal(&mut v, actual),
             Literal::Null => test_null_object(actual),
+            Literal::Ins(_) => {}
         }
     }
 }

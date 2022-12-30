@@ -8,10 +8,10 @@ use crate::{
     code::{
         make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
         OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL,
-        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
+        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
     object::{
-        objects::{Integer, StringObj},
+        objects::{CompiledFunctionObj, Integer, StringObj},
         AllObjects,
     },
 };
@@ -39,7 +39,11 @@ impl Compiler {
                     }
                 }
                 AllStatements::Expression(stmt) => self.compile_expression_statement(stmt)?,
-                _ => unimplemented!(),
+                AllStatements::Return(s) => {
+                    self.compile(AllNodes::Expressions(*s.return_value))?;
+                    self.emit(OP_RETURN_VALUE, &[]);
+                }
+                AllStatements::While(_) => unimplemented!(),
             },
             AllNodes::Expressions(expr) => match expr {
                 AllExpressions::IntegerLiteral(v) => self.compile_integer_literal(v)?,
@@ -52,6 +56,7 @@ impl Compiler {
                 AllExpressions::HashLiteral(mut v) => self.compile_hash_literal(&mut v)?,
                 AllExpressions::Identifier(v) => self.compile_identifier(v)?,
                 AllExpressions::IndexExpression(v) => self.compile_index_expression(v)?,
+                AllExpressions::FunctionLiteral(v) => self.compile_function_literals(v)?,
                 _ => unimplemented!(),
             },
         }
@@ -153,6 +158,23 @@ impl Compiler {
         Ok(())
     }
 
+    fn compile_function_literals(&mut self, expr: expressions::FunctionLiteral) -> Result<()> {
+        let current_instructions = std::mem::take(&mut self.instructions);
+
+        self.compile(AllNodes::Statements(AllStatements::Block(expr.body)))?;
+        let compiled_fn_instructions = std::mem::take(&mut self.instructions);
+
+        let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj {
+            instructions: compiled_fn_instructions,
+        });
+
+        self.instructions = current_instructions;
+        let constant_index = self.add_constant(compiled_fn);
+        self.emit(OP_CONSTANT, &[constant_index]);
+
+        Ok(())
+    }
+
     fn compile_if_expression(&mut self, expr: expressions::IfExpression) -> Result<()> {
         self.compile(AllNodes::Expressions(*expr.condition))?;
 
@@ -160,14 +182,14 @@ impl Compiler {
         let jump_not_truthy_position = self.emit(OP_JUMP_NOT_TRUTHY, &[9999]);
 
         self.compile(AllNodes::Statements(AllStatements::Block(expr.consequence)))?;
-        if self.last_instruction.opcode == OP_POP {
+        if self.last_instruction_is_pop() {
             self.remove_last_pop();
         }
 
         // Emit an `OP_JUMP` with a bogus value
         let jump_position = self.emit(OP_JUMP, &[9999]);
 
-        let after_consequence_pos = self.instructions.len();
+        let after_consequence_pos = self.current_instructions().len();
         self.change_operand(jump_not_truthy_position, after_consequence_pos);
 
         if expr.alternative.is_none() {
@@ -177,24 +199,26 @@ impl Compiler {
                 expr.alternative.unwrap(),
             )))?;
 
-            if self.last_instruction.opcode == OP_POP {
+            if self.last_instruction_is_pop() {
                 self.remove_last_pop();
             }
         }
 
-        let after_alternative_pos = self.instructions.len();
+        let after_alternative_pos = self.current_instructions().len();
         self.change_operand(jump_position, after_alternative_pos);
 
         Ok(())
     }
 
     fn change_operand(&mut self, op_pos: usize, operand: usize) {
-        let op = self.instructions[op_pos];
+        let op = self.current_instructions()[op_pos];
         let new_instruction = make(op, &[operand]);
 
         // replace the instructions bytes with the new instruction
-        self.instructions[op_pos..(op_pos + new_instruction.len())]
-            .copy_from_slice(&new_instruction);
+        let ins = self.current_instructions();
+        for i in 0..new_instruction.len() {
+            ins[op_pos + i] = new_instruction[i];
+        }
     }
 
     fn compile_integer_literal(&mut self, v: expressions::IntegerLiteral) -> Result<()> {

@@ -108,6 +108,7 @@ mod tests {
     };
 
     #[test]
+    #[ignore = "reason"]
     fn test_vm_works() {
         use Literal::{Arr, Bool, Hash, Int, Str};
 

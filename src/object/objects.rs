@@ -65,13 +65,12 @@ impl Object for Error {
 
 #[derive(Clone)]
 pub struct CompiledFunctionObj {
-    pub name: String,
     pub instructions: Instructions,
 }
 
 impl PartialEq for CompiledFunctionObj {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        format!("{:?}", self.instructions) == format!("{:?}", other.instructions)
     }
 }
 
@@ -79,7 +78,7 @@ impl Eq for CompiledFunctionObj {}
 
 impl Hash for CompiledFunctionObj {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
+        format!("{:?}", self.instructions).hash(state);
     }
 }
 

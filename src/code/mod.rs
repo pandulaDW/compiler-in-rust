@@ -78,10 +78,10 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_SET_GLOBAL => Ok(Definition::new("OpSetGlobal", vec![2])),
         OP_ARRAY => Ok(Definition::new("OpArray", vec![2])),
         OP_HASH => Ok(Definition::new("OpHash", vec![2])),
-        OP_INDEX => Ok(Definition::new("OpIndex", vec![0])),
-        OP_CALL => Ok(Definition::new("OpCall", vec![0])),
-        OP_RETURN_VALUE => Ok(Definition::new("OpReturnValue", vec![0])),
-        OP_RETURN => Ok(Definition::new("OpReturn", vec![0])),
+        OP_INDEX => Ok(Definition::new("OpIndex", vec![])),
+        OP_CALL => Ok(Definition::new("OpCall", vec![])),
+        OP_RETURN_VALUE => Ok(Definition::new("OpReturnValue", vec![])),
+        OP_RETURN => Ok(Definition::new("OpReturn", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
