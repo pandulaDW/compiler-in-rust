@@ -80,40 +80,39 @@ impl Compiler {
     fn enter_scope(&mut self) {
         let scope = CompilationScope {
             instructions: vec![],
-            last_instructions: EmittedInstruction::default(),
+            last_instruction: EmittedInstruction::default(),
             previous_instruction: EmittedInstruction::default(),
         };
         self.scopes.push(scope);
         self.scope_index += 1;
     }
 
-    /// Removed the created scope and make the second-to-last one active
+    /// Remove the last created scope and make the second-to-last one active
     fn leave_scope(&mut self) -> Instructions {
-        let instructions = self.current_instructions().clone();
-        self.scopes.pop();
+        let s = self.scopes.pop().unwrap(); // will always have at least one scope
         self.scope_index -= 1;
-        instructions
+        s.instructions
     }
 
     /// Set the last instruction and the last-to-previous instruction
     fn set_last_instruction(&mut self, opcode: Opcode, position: usize) {
-        let previous = self.scopes[self.scope_index].last_instructions.clone();
+        let previous = self.scopes[self.scope_index].last_instruction.clone();
         let last = EmittedInstruction::new(opcode, position);
 
         self.scopes[self.scope_index].previous_instruction = previous;
-        self.scopes[self.scope_index].last_instructions = last;
+        self.scopes[self.scope_index].last_instruction = last;
     }
 
     /// Removes the last pop instruction
     fn remove_last_pop(&mut self) {
-        let last = self.scopes[self.scope_index].last_instructions.clone();
+        let last = self.scopes[self.scope_index].last_instruction.clone();
         let previous = self.scopes[self.scope_index].previous_instruction.clone();
 
         let old = self.current_instructions();
         let new = &old[..last.position];
 
         self.scopes[self.scope_index].instructions = new.to_vec();
-        self.scopes[self.scope_index].last_instructions = previous;
+        self.scopes[self.scope_index].last_instruction = previous;
     }
 
     /// Add the given constant to the constant pool and return it's index position.
@@ -128,8 +127,17 @@ impl Compiler {
     }
 
     /// Check if the last instruction is a POP instruction
-    fn last_instruction_is_pop(&self) -> bool {
-        self.scopes[self.scope_index].last_instructions.opcode == code::OP_POP
+    fn last_instruction_is(&mut self, op: Opcode) -> bool {
+        if self.current_instructions().is_empty() {
+            return false;
+        }
+        self.scopes[self.scope_index].last_instruction.opcode == op
+    }
+
+    /// Replace the current instruction slice with the given instruction slice starting from the given position
+    fn replace_instruction(&mut self, position: usize, ins: Instructions) {
+        let current_ins = self.current_instructions();
+        current_ins[position..(ins.len() + position)].copy_from_slice(&ins[..]);
     }
 }
 
@@ -142,7 +150,7 @@ pub struct ByteCode {
 #[derive(Default)]
 struct CompilationScope {
     instructions: code::Instructions,
-    last_instructions: EmittedInstruction,
+    last_instruction: EmittedInstruction,
     previous_instruction: EmittedInstruction,
 }
 
@@ -525,20 +533,41 @@ mod tests {
     #[test]
     fn test_function_literals() {
         use Literal::{Ins, Int};
-        let test_cases: Vec<CompilerTestCase> = vec![(
-            "fn() { return 5 + 10 }",
-            vec![
-                Int(5),
-                Int(10),
-                Ins(vec![
-                    make(OP_CONSTANT, &[0]),
-                    make(OP_CONSTANT, &[1]),
-                    make(OP_ADD, &[]),
-                    make(OP_RETURN_VALUE, &[]),
-                ]),
-            ],
-            vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
-        )];
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "fn() { return 5 + 10 }",
+                vec![
+                    Int(5),
+                    Int(10),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[0]),
+                        make(OP_CONSTANT, &[1]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+            ),
+            (
+                "fn() { 5 + 10 }",
+                vec![
+                    Int(5),
+                    Int(10),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[0]),
+                        make(OP_CONSTANT, &[1]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+            ),
+            (
+                "fn() { }",
+                vec![Ins(vec![make(OP_RETURN, &[])])],
+                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
+            ),
+        ];
         run_compiler_tests(test_cases);
     }
 
@@ -549,14 +578,14 @@ mod tests {
 
         compiler.emit(OP_MUL, &[]);
         assert_eq!(compiler.scopes[0].instructions.len(), 1);
-        assert_eq!(compiler.scopes[0].last_instructions.opcode, OP_MUL);
+        assert_eq!(compiler.scopes[0].last_instruction.opcode, OP_MUL);
 
         compiler.enter_scope();
         assert_eq!(compiler.scope_index, 1);
 
         compiler.emit(OP_SUB, &[]);
         assert_eq!(compiler.scopes[1].instructions.len(), 1);
-        assert_eq!(compiler.scopes[1].last_instructions.opcode, OP_SUB);
+        assert_eq!(compiler.scopes[1].last_instruction.opcode, OP_SUB);
 
         compiler.leave_scope();
         assert_eq!(compiler.scopes.len(), 1);
@@ -564,7 +593,7 @@ mod tests {
 
         compiler.emit(OP_ADD, &[]);
         assert_eq!(compiler.scopes[0].instructions.len(), 2);
-        assert_eq!(compiler.scopes[0].last_instructions.opcode, OP_ADD);
+        assert_eq!(compiler.scopes[0].last_instruction.opcode, OP_ADD);
         assert_eq!(compiler.scopes[0].previous_instruction.opcode, OP_MUL);
     }
 }
@@ -762,7 +791,7 @@ pub mod test_helpers {
             Literal::Arr(v) => test_array_literal(v, actual),
             Literal::Hash(mut v) => test_hash_literal(&mut v, actual),
             Literal::Null => test_null_object(actual),
-            Literal::Ins(_) => {}
+            Literal::Ins(v) => test_fn_instructions(v, actual),
         }
     }
 }

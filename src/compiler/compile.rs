@@ -8,7 +8,7 @@ use crate::{
     code::{
         make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
         OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL,
-        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
+        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
     },
     object::{
         objects::{CompiledFunctionObj, Integer, StringObj},
@@ -162,6 +162,18 @@ impl Compiler {
         self.enter_scope();
         self.compile(AllNodes::Statements(AllStatements::Block(expr.body)))?;
 
+        // replace last pop with return
+        if self.last_instruction_is(OP_POP) {
+            let last_pos = self.scopes[self.scope_index].last_instruction.position;
+            self.replace_instruction(last_pos, make(OP_RETURN_VALUE, &[]));
+            self.scopes[self.scope_index].last_instruction.opcode = OP_RETURN_VALUE;
+        }
+
+        // empty function case
+        if !self.last_instruction_is(OP_RETURN_VALUE) {
+            self.emit(OP_RETURN, &[]);
+        }
+
         let fn_instructions = self.leave_scope();
 
         let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj::new(fn_instructions));
@@ -178,7 +190,7 @@ impl Compiler {
         let jump_not_truthy_position = self.emit(OP_JUMP_NOT_TRUTHY, &[9999]);
 
         self.compile(AllNodes::Statements(AllStatements::Block(expr.consequence)))?;
-        if self.last_instruction_is_pop() {
+        if self.last_instruction_is(OP_POP) {
             self.remove_last_pop();
         }
 
@@ -195,7 +207,7 @@ impl Compiler {
                 expr.alternative.unwrap(),
             )))?;
 
-            if self.last_instruction_is_pop() {
+            if self.last_instruction_is(OP_POP) {
                 self.remove_last_pop();
             }
         }
@@ -209,12 +221,7 @@ impl Compiler {
     fn change_operand(&mut self, op_pos: usize, operand: usize) {
         let op = self.current_instructions()[op_pos];
         let new_instruction = make(op, &[operand]);
-
-        // replace the instructions bytes with the new instruction
-        let ins = self.current_instructions();
-        for i in 0..new_instruction.len() {
-            ins[op_pos + i] = new_instruction[i];
-        }
+        self.replace_instruction(op_pos, new_instruction);
     }
 
     fn compile_integer_literal(&mut self, v: expressions::IntegerLiteral) -> Result<()> {
