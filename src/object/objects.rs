@@ -68,6 +68,12 @@ pub struct CompiledFunctionObj {
     pub instructions: Instructions,
 }
 
+impl CompiledFunctionObj {
+    pub fn new(instructions: Instructions) -> Self {
+        Self { instructions }
+    }
+}
+
 impl PartialEq for CompiledFunctionObj {
     fn eq(&self, other: &Self) -> bool {
         format!("{:?}", self.instructions) == format!("{:?}", other.instructions)

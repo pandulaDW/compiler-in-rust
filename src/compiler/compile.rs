@@ -159,16 +159,12 @@ impl Compiler {
     }
 
     fn compile_function_literals(&mut self, expr: expressions::FunctionLiteral) -> Result<()> {
-        let current_instructions = std::mem::take(&mut self.instructions);
-
+        self.enter_scope();
         self.compile(AllNodes::Statements(AllStatements::Block(expr.body)))?;
-        let compiled_fn_instructions = std::mem::take(&mut self.instructions);
 
-        let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj {
-            instructions: compiled_fn_instructions,
-        });
+        let fn_instructions = self.leave_scope();
 
-        self.instructions = current_instructions;
+        let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj::new(fn_instructions));
         let constant_index = self.add_constant(compiled_fn);
         self.emit(OP_CONSTANT, &[constant_index]);
 
