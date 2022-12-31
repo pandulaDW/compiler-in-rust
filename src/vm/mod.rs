@@ -1,10 +1,11 @@
+mod frame;
 mod run;
 
+use self::frame::Frame;
 use crate::{
-    code::Instructions,
     compiler::ByteCode,
     object::{
-        objects::{Boolean, Null},
+        objects::{Boolean, CompiledFunctionObj, Null},
         AllObjects,
     },
 };
@@ -12,6 +13,9 @@ use anyhow::{anyhow, Result};
 
 /// Maximum number of objects that can be at a given time in the stack
 const STACK_SIZE: usize = 2048;
+
+/// Maximum number of stack frames that can exist at a given time
+const MAX_FRAMES: usize = 1024;
 
 /// TRUE constant
 const TRUE: AllObjects = AllObjects::Boolean(Boolean { value: true });
@@ -26,36 +30,42 @@ pub struct VM {
     /// the constants list obtained from the bytecode
     constants: Vec<AllObjects>,
 
-    /// bytecode instructions
-    instructions: Instructions,
-
     /// stack will host the operands and the results
     stack: Vec<AllObjects>,
 
     /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
     sp: usize,
 
-    /// instruction pointer, which points the index of the currently executing opcode
-    ip: usize,
-
     /// holder of global variable objects
     pub globals: Vec<AllObjects>,
 
     /// last popped stack element
     result: Option<AllObjects>,
+
+    /// stack frames created for all functions including main
+    frames: Vec<Frame>,
+
+    /// current active frame
+    frames_index: usize,
 }
 
 impl VM {
     /// Creates a new VM using the provided bytecode
     pub fn new(bytecode: ByteCode) -> Self {
+        let main_fn = CompiledFunctionObj::new(bytecode.instructions);
+        let main_frame = Frame::new(main_fn);
+
+        let mut frames = Vec::with_capacity(MAX_FRAMES);
+        frames.push(main_frame);
+
         Self {
             constants: bytecode.constants,
-            instructions: bytecode.instructions,
             stack: Vec::with_capacity(STACK_SIZE),
             globals: Vec::new(),
             sp: 0,
-            ip: 0,
             result: None,
+            frames,
+            frames_index: 1,
         }
     }
 
@@ -90,11 +100,27 @@ impl VM {
         };
         self.sp -= 1;
 
-        if self.stack.is_empty() && (self.ip + 1) >= self.instructions.len() {
+        if self.stack.is_empty()
+            && (self.current_frame().ip + 1) >= self.current_frame().instructions().len()
+        {
             self.result = Some(obj.clone());
         }
 
         Ok(obj)
+    }
+
+    fn current_frame(&mut self) -> &mut Frame {
+        &mut self.frames[self.frames_index - 1]
+    }
+
+    fn push_frame(&mut self, f: Frame) {
+        self.frames.push(f);
+        self.frames_index += 1;
+    }
+
+    fn pop_frame(&mut self) -> Frame {
+        self.frames_index -= 1;
+        self.frames.pop().unwrap()
     }
 }
 
@@ -206,6 +232,24 @@ mod tests {
             ("{1: 1, 2: 2}[2]", Int(2)),
             ("{1: 1}[0]", Literal::Null),
             ("{}[0]", Literal::Null),
+            (
+                "let fivePlusTen = fn() { 5 + 10; };
+                 let result = fivePlusTen() + 20; result;",
+                Int(35),
+            ),
+            (
+                "let one = fn() { 1; };
+                let two = fn() { 2; };
+                one() + two()",
+                Int(3),
+            ),
+            (
+                "let a = fn() { 1 };
+                 let b = fn() { a() + 1 };
+                 let c = fn() { b() + 1 };
+                 c();",
+                Int(3),
+            ),
         ];
 
         for tc in test_cases {

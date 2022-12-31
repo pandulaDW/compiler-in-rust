@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{FALSE, NULL, TRUE, VM};
+use super::{frame::Frame, FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
     object::{
@@ -13,8 +13,10 @@ use anyhow::{anyhow, Result};
 impl VM {
     /// Runs the bytecode instructions from start to finish.
     pub fn run(&mut self) -> Result<()> {
-        while self.ip < self.instructions.len() {
-            let op = self.instructions[self.ip];
+        while self.current_frame().ip < self.current_frame().instructions().len() {
+            let ip = self.current_frame().ip;
+            let op = self.current_frame().instructions()[ip];
+
             match op {
                 OP_CONSTANT => self.run_constant_instruction()?,
                 OP_ADD | OP_SUB | OP_MUL | OP_DIV => self.run_arithmetic_operations(op)?,
@@ -28,6 +30,8 @@ impl VM {
                 OP_ARRAY => self.run_array_literal_instruction()?,
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
+                OP_CALL => self.run_call_expression()?,
+                OP_RETURN_VALUE => self.run_return_value_expression()?,
                 OP_POP => {
                     self.pop()?;
                 }
@@ -36,7 +40,7 @@ impl VM {
                 OP_NULL => self.push(NULL)?,
                 _ => {}
             }
-            self.ip += 1;
+            self.current_frame().ip += 1;
         }
 
         Ok(())
@@ -104,18 +108,21 @@ impl VM {
     }
 
     fn run_constant_instruction(&mut self) -> Result<()> {
-        let const_index = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
+        let ip = self.current_frame().ip;
+        let const_index = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
         if self.constants.get(const_index).is_none() {
             return Err(anyhow!("constant at the index {const_index} not found"));
         }
         self.push(self.constants[const_index].clone())?;
-        self.ip += 2;
+        self.current_frame().ip += 2;
         Ok(())
     }
 
     fn run_set_global_instruction(&mut self) -> Result<()> {
-        let global_index = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-        self.ip += 2;
+        let ip = self.current_frame().ip;
+        let global_index =
+            code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 2;
 
         let last_pushed = self.pop()?;
         if self.globals.get(global_index).is_none() {
@@ -128,8 +135,10 @@ impl VM {
     }
 
     fn run_get_global_instruction(&mut self) -> Result<()> {
-        let global_index = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-        self.ip += 2;
+        let ip = self.current_frame().ip;
+        let global_index =
+            code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 2;
         let Some(v) = self.globals.get(global_index) else {
             return Err(anyhow!("variable at index {global_index} not found"));
         };
@@ -138,8 +147,9 @@ impl VM {
     }
 
     fn run_array_literal_instruction(&mut self) -> Result<()> {
-        let arr_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-        self.ip += 2;
+        let ip = self.current_frame().ip;
+        let arr_len = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 2;
         let mut elements = Vec::with_capacity(arr_len);
 
         for _ in 0..arr_len {
@@ -153,8 +163,9 @@ impl VM {
     }
 
     fn run_hash_literal_instruction(&mut self) -> Result<()> {
-        let map_len = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-        self.ip += 2;
+        let ip = self.current_frame().ip;
+        let map_len = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 2;
         let mut map = HashMap::new();
 
         for _ in 0..map_len {
@@ -219,20 +230,41 @@ impl VM {
         };
 
         if !condition.value {
-            let jump_position = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-            self.ip = jump_position - 1; // since ip gets incremented at the end of the loop
+            let ip = self.current_frame().ip;
+            let jump_position =
+                code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+            self.current_frame().ip = jump_position - 1; // since ip gets incremented at the end of the loop
             return Ok(());
         }
 
         // consume the jump instruction
-        self.ip += 2;
+        self.current_frame().ip += 2;
 
         Ok(())
     }
 
     fn run_jump_instruction(&mut self) -> Result<()> {
-        let jump_position = code::helpers::read_u16(&self.instructions[(self.ip + 1)..]);
-        self.ip = jump_position - 1; // since ip gets incremented at in the loop
+        let ip = self.current_frame().ip;
+        let jump_position =
+            code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip = jump_position - 1; // since ip gets incremented at in the loop
+        Ok(())
+    }
+
+    fn run_call_expression(&mut self) -> Result<()> {
+        let func = match self.pop()? {
+            AllObjects::CompiledFunction(v) => v,
+            v => return Err(anyhow!("expected a function, found {}", v.inspect())),
+        };
+        self.push_frame(Frame::new(func));
+        self.run()?;
+        Ok(())
+    }
+
+    fn run_return_value_expression(&mut self) -> Result<()> {
+        let return_value = self.pop()?;
+        self.pop_frame();
+        self.push(return_value)?;
         Ok(())
     }
 

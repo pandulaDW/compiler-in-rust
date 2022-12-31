@@ -6,9 +6,10 @@ use crate::{
         AllNodes,
     },
     code::{
-        make, OP_ADD, OP_ARRAY, OP_BANG, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_GLOBAL,
-        OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL,
-        OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB, OP_TRUE,
+        make, OP_ADD, OP_ARRAY, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE,
+        OP_GET_GLOBAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS,
+        OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB,
+        OP_TRUE,
     },
     object::{
         objects::{CompiledFunctionObj, Integer, StringObj},
@@ -57,6 +58,7 @@ impl Compiler {
                 AllExpressions::Identifier(v) => self.compile_identifier(v)?,
                 AllExpressions::IndexExpression(v) => self.compile_index_expression(v)?,
                 AllExpressions::FunctionLiteral(v) => self.compile_function_literals(v)?,
+                AllExpressions::CallExpression(v) => self.compile_call_expressions(v)?,
                 _ => unimplemented!(),
             },
         }
@@ -243,6 +245,12 @@ impl Compiler {
             true => self.emit(OP_TRUE, &[]),
             false => self.emit(OP_FALSE, &[]),
         };
+        Ok(())
+    }
+
+    fn compile_call_expressions(&mut self, v: expressions::CallExpression) -> Result<()> {
+        self.compile(AllNodes::Expressions(*v.function))?;
+        self.emit(OP_CALL, &[]);
         Ok(())
     }
 }

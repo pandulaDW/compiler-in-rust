@@ -78,11 +78,7 @@ impl Compiler {
 
     /// Create a new scope and make it active
     fn enter_scope(&mut self) {
-        let scope = CompilationScope {
-            instructions: vec![],
-            last_instruction: EmittedInstruction::default(),
-            previous_instruction: EmittedInstruction::default(),
-        };
+        let scope = CompilationScope::default();
         self.scopes.push(scope);
         self.scope_index += 1;
     }
@@ -595,6 +591,41 @@ mod tests {
         assert_eq!(compiler.scopes[0].instructions.len(), 2);
         assert_eq!(compiler.scopes[0].last_instruction.opcode, OP_ADD);
         assert_eq!(compiler.scopes[0].previous_instruction.opcode, OP_MUL);
+    }
+
+    #[test]
+    fn test_function_calls() {
+        use Literal::{Ins, Int};
+
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "fn() { 24 }()",
+                vec![
+                    Int(24),
+                    Ins(vec![make(OP_CONSTANT, &[0]), make(OP_RETURN_VALUE, &[])]),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CALL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "let noArg = fn() { 24 }; noArg()",
+                vec![
+                    Int(24),
+                    Ins(vec![make(OP_CONSTANT, &[0]), make(OP_RETURN_VALUE, &[])]),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_CALL, &[]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+        run_compiler_tests(test_cases);
     }
 }
 
