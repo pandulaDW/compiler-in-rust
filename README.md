@@ -4,7 +4,7 @@ This is written in Rust by following the books from [Thorsten Ball](https://inte
 The compiler is built from scratch and it includes a lexer (tokenizer), a parser, a compiler and a vm.
 
 This project is an extension to a previously written [interpreter](https://github.com/pandulaDW/interpreter-in-rust) project.</br>
-Except for the tree walking evaluation part, everything else has been ported from that project.
+Except for the tree walking evaluation part, both lexer and parser have been ported from that project.
 
 ---
 

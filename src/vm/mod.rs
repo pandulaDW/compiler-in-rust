@@ -33,9 +33,6 @@ pub struct VM {
     /// stack will host the operands and the results
     stack: Vec<AllObjects>,
 
-    /// stack pointer, which always points to the next value. Top of stack is stack[sp-1]
-    sp: usize,
-
     /// holder of global variable objects
     pub globals: Vec<AllObjects>,
 
@@ -62,7 +59,6 @@ impl VM {
             constants: bytecode.constants,
             stack: Vec::with_capacity(STACK_SIZE),
             globals: Vec::new(),
-            sp: 0,
             result: None,
             frames,
             frames_index: 1,
@@ -83,11 +79,10 @@ impl VM {
 
     /// Pushes the given object on to the stack and increments the stack pointer.
     fn push(&mut self, val: AllObjects) -> Result<()> {
-        if self.sp >= STACK_SIZE {
+        if self.stack.len() >= STACK_SIZE {
             return Err(anyhow!("stack overflow"));
         }
         self.stack.push(val);
-        self.sp += 1;
         Ok(())
     }
 
@@ -98,7 +93,6 @@ impl VM {
         let Some(obj)  = self.stack.pop() else {
             return Err(anyhow!("stack is empty"));
         };
-        self.sp -= 1;
 
         if self.stack.is_empty()
             && (self.current_frame().ip + 1) >= self.current_frame().instructions().len()
