@@ -244,9 +244,38 @@ mod tests {
                  c();",
                 Int(3),
             ),
+            (
+                "let earlyExit = fn() { return 99; 100; };
+            earlyExit();",
+                Int(99),
+            ),
+            (
+                "let earlyExit = fn() { return 99; return 100; };
+            earlyExit();",
+                Int(99),
+            ),
+            (
+                "let noReturn = fn() { };
+            noReturn();",
+                Literal::Null,
+            ),
+            (
+                "let noReturn = fn() { };
+                let noReturnTwo = fn() { noReturn(); };
+                noReturnTwo();",
+                Literal::Null,
+            ),
+            (
+                "
+            let returnsOne = fn() { 1; };
+            let returnsOneReturner = fn() { returnsOne; };
+            returnsOneReturner()();",
+                Int(1),
+            ),
         ];
+        let num_test_cases = test_cases.len();
 
-        for tc in test_cases {
+        for (i, tc) in test_cases.into_iter().enumerate() {
             let program = parse(tc.0);
             let mut comp = Compiler::new();
             if let Err(e) = comp.compile(program.make_node()) {
@@ -254,8 +283,15 @@ mod tests {
             }
 
             let mut vm = VM::new(comp.byte_code());
-            if let Err(e) = vm.run() {
-                panic!("input: {}, vm error:  {}", tc.0, e);
+            // for debugging
+            if i == num_test_cases - 1 {
+                if let Err(e) = vm.run() {
+                    panic!("input: {}, vm error:  {}", tc.0, e);
+                }
+            } else {
+                if let Err(e) = vm.run() {
+                    panic!("input: {}, vm error:  {}", tc.0, e);
+                }
             }
 
             let stack_elem = vm.result();

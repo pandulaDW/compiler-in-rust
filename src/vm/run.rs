@@ -31,7 +31,13 @@ impl VM {
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
                 OP_CALL => self.run_call_expression()?,
-                OP_RETURN_VALUE => self.run_return_value_expression()?,
+                OP_RETURN_VALUE => {
+                    self.pop_frame();
+                }
+                OP_RETURN => {
+                    self.pop_frame();
+                    self.push(NULL)?;
+                }
                 OP_POP => {
                     self.pop()?;
                 }
@@ -258,13 +264,6 @@ impl VM {
         };
         self.push_frame(Frame::new(func));
         self.run()?;
-        Ok(())
-    }
-
-    fn run_return_value_expression(&mut self) -> Result<()> {
-        let return_value = self.pop()?;
-        self.pop_frame();
-        self.push(return_value)?;
         Ok(())
     }
 
