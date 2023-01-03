@@ -23,45 +23,39 @@ impl Symbol {
 }
 
 /// A Wrapper around `SymbolTableDefinition` to give immutable references access to mutable symbol table methods
-/// It also implements methods from `SymbolTableDefinition` with immutable references.
 #[derive(Clone)]
 pub struct SymbolTable {
-    table: RefCell<SymbolTableDefinition>,
+    pub table: RefCell<SymbolTableDefinition>,
+    pub outer: Option<Rc<SymbolTable>>,
 }
 
 impl SymbolTable {
-    pub fn define(&self, name: &str) -> Symbol {
-        self.table.borrow_mut().define(name)
-    }
-
-    pub fn resolve(&self, name: &str) -> Option<Symbol> {
-        self.table.borrow().resolve(name)
-    }
-}
-
-#[derive(Clone)]
-pub struct SymbolTableDefinition {
-    store: HashMap<String, Symbol>,
-    num_definitions: usize,
-    outer: Option<Rc<SymbolTable>>,
-}
-
-impl SymbolTableDefinition {
-    /// Create and store a new `Symbol` definition
-    fn define(&mut self, name: &str) -> Symbol {
-        let mut symbol = Symbol::new(name, GLOBAL_SCOPE, self.num_definitions);
-        if self.outer.is_some() {
-            symbol.scope = LOCAL_SCOPE
+    /// Creates a new symbol table
+    pub fn new() -> Self {
+        Self {
+            table: RefCell::new(SymbolTableDefinition {
+                store: HashMap::new(),
+                num_definitions: 0,
+            }),
+            outer: None,
         }
-
-        self.store.insert(name.to_string(), symbol.clone());
-        self.num_definitions += 1;
-        symbol
     }
 
-    /// Resolves and return the symbol associated with the name
-    fn resolve(&self, name: &str) -> Option<Symbol> {
-        let mut result = self.store.get(name).cloned();
+    /// Creates a new symbol table with the given outer table as its attached outer table
+    pub fn new_enclosed(outer: Rc<SymbolTable>) -> Self {
+        let mut s = Self::new();
+        s.outer = Some(outer);
+        s
+    }
+
+    /// A wrapper around the `SymbolTableDefinition`'s `define` method
+    pub fn define(&self, name: &str) -> Symbol {
+        self.table.borrow_mut().define(name, self.outer.is_some())
+    }
+
+    /// Returns the symbol associated with the given name by recursively checking all the scopes
+    pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        let mut result = self.table.borrow().store.get(name).cloned();
         if result.is_none() && self.outer.is_some() {
             result = self.outer.as_ref().unwrap().resolve(name);
         }
@@ -69,21 +63,23 @@ impl SymbolTableDefinition {
     }
 }
 
-impl SymbolTable {
-    pub fn new() -> Self {
-        Self {
-            table: RefCell::new(SymbolTableDefinition {
-                store: HashMap::new(),
-                num_definitions: 0,
-                outer: None,
-            }),
-        }
-    }
+#[derive(Clone)]
+pub struct SymbolTableDefinition {
+    store: HashMap<String, Symbol>,
+    num_definitions: usize,
+}
 
-    pub fn new_enclosed(outer: Rc<SymbolTable>) -> Self {
-        let s = Self::new();
-        s.table.borrow_mut().outer = Some(outer);
-        s
+impl SymbolTableDefinition {
+    /// Create and store a new `Symbol` definition
+    fn define(&mut self, name: &str, outer_exists: bool) -> Symbol {
+        let mut symbol = Symbol::new(name, GLOBAL_SCOPE, self.num_definitions);
+        if outer_exists {
+            symbol.scope = LOCAL_SCOPE
+        }
+
+        self.store.insert(name.to_string(), symbol.clone());
+        self.num_definitions += 1;
+        symbol
     }
 }
 

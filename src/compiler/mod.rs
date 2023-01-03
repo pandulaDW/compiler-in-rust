@@ -88,6 +88,7 @@ impl Compiler {
     /// Remove the last created scope and make the second-to-last one active
     fn leave_scope(&mut self) -> Instructions {
         let s = self.scopes.pop().unwrap(); // will always have at least one scope
+        self.symbol_table = self.symbol_table.outer.as_ref().unwrap().clone(); // all functions will have a global scope
         self.scope_index -= 1;
         s.instructions
     }
@@ -580,6 +581,7 @@ mod tests {
 
         compiler.enter_scope();
         assert_eq!(compiler.scope_index, 1);
+        assert!(compiler.symbol_table.outer.is_some());
 
         compiler.emit(OP_SUB, &[]);
         assert_eq!(compiler.scopes[1].instructions.len(), 1);
@@ -588,6 +590,7 @@ mod tests {
         compiler.leave_scope();
         assert_eq!(compiler.scopes.len(), 1);
         assert_eq!(compiler.scope_index, 0);
+        assert!(compiler.symbol_table.outer.is_none());
 
         compiler.emit(OP_ADD, &[]);
         assert_eq!(compiler.scopes[0].instructions.len(), 2);
