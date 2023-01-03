@@ -35,6 +35,8 @@ pub const OP_INDEX: Opcode = 21;
 pub const OP_CALL: Opcode = 22;
 pub const OP_RETURN_VALUE: Opcode = 23;
 pub const OP_RETURN: Opcode = 24;
+pub const OP_GET_LOCAL: Opcode = 25;
+pub const OP_SET_LOCAL: Opcode = 26;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -74,7 +76,7 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_JUMP_NOT_TRUTHY => Ok(Definition::new("OpJumpNotTruthy", vec![2])),
         OP_JUMP => Ok(Definition::new("OpJump", vec![2])),
         OP_NULL => Ok(Definition::new("OpNull", vec![])),
-        OP_GET_GLOBAL => Ok(Definition::new("OpGetGlobal", vec![2])),
+        OP_GET_GLOBAL => Ok(Definition::new("OpGetGlobal", vec![2])), // 65536 global bindings
         OP_SET_GLOBAL => Ok(Definition::new("OpSetGlobal", vec![2])),
         OP_ARRAY => Ok(Definition::new("OpArray", vec![2])),
         OP_HASH => Ok(Definition::new("OpHash", vec![2])),
@@ -82,6 +84,8 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_CALL => Ok(Definition::new("OpCall", vec![])),
         OP_RETURN_VALUE => Ok(Definition::new("OpReturnValue", vec![])),
         OP_RETURN => Ok(Definition::new("OpReturn", vec![])),
+        OP_GET_LOCAL => Ok(Definition::new("OpGetLocal", vec![1])), // 256 local bindings
+        OP_SET_LOCAL => Ok(Definition::new("OpSetLocal", vec![1])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
@@ -106,6 +110,7 @@ pub fn make(op: Opcode, operands: &[usize]) -> Instructions {
     for (i, o) in operands.iter().enumerate() {
         let width = def.operand_widths[i];
         match width {
+            1 => instructions[offset] = u8::try_from(*o).unwrap(),
             2 => BigEndian::write_u16(&mut instructions[offset..], u16::try_from(*o).unwrap()),
             _ => {}
         };
@@ -127,6 +132,7 @@ mod tests {
         let test_cases = [
             (OP_CONSTANT, vec![65534], vec![OP_CONSTANT, 255, 254]),
             (OP_ADD, vec![], vec![OP_ADD]),
+            (OP_GET_LOCAL, vec![254], vec![OP_GET_LOCAL, 254]),
         ];
 
         for tc in test_cases {
@@ -139,13 +145,15 @@ mod tests {
     fn test_instructions_string() {
         let instructions = vec![
             make(OP_ADD, &[]),
+            make(OP_GET_LOCAL, &[253]),
             make(OP_CONSTANT, &[2]),
             make(OP_CONSTANT, &[65535]),
         ];
 
         let expected = "0000 OpAdd
-0001 OpConstant 2
-0004 OpConstant 65535
+0001 OpGetLocal 253
+0003 OpConstant 2
+0006 OpConstant 65535
 ";
 
         let concatted = concat_instructions(instructions);
@@ -155,7 +163,7 @@ mod tests {
     #[test]
     fn test_read_operands() {
         // op, operands, bytes_read
-        let test_cases = [(OP_CONSTANT, [65535], 2)];
+        let test_cases = [(OP_CONSTANT, [65535], 2), (OP_GET_LOCAL, [255], 1)];
 
         for tc in test_cases {
             let instruction = make(tc.0, &tc.1);
@@ -207,6 +215,7 @@ mod test_helpers {
 
         for (i, width) in def.operand_widths.iter().enumerate() {
             match width {
+                1 => operands[i] = helpers::read_u8(&ins[offset..]),
                 2 => operands[i] = helpers::read_u16(&ins[offset..]),
                 _ => {}
             };
