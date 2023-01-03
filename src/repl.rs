@@ -6,7 +6,10 @@ use crate::{
     vm,
 };
 use clap::Parser as ClapParser;
-use std::io::{self, BufRead, Write};
+use std::{
+    io::{self, BufRead, Write},
+    rc::Rc,
+};
 
 const PROMPT: &str = ">> ";
 
@@ -30,7 +33,7 @@ pub fn start_repl<T: BufRead, U: Write>(input: &mut T, output: &mut U) -> io::Re
 
     let mut constants = Vec::new();
     let mut globals = Vec::new();
-    let mut symbol_table = SymbolTable::new();
+    let mut symbol_table = Rc::new(SymbolTable::new());
 
     loop {
         write!(output, "{}", PROMPT)?;
@@ -126,8 +129,8 @@ pub fn execute_line_for_repl<U: Write>(
     output: &mut U,
     constants: Vec<AllObjects>,
     globals: Vec<AllObjects>,
-    symbol_table: SymbolTable,
-) -> io::Result<(Vec<AllObjects>, Vec<AllObjects>, SymbolTable)> {
+    symbol_table: Rc<SymbolTable>,
+) -> io::Result<(Vec<AllObjects>, Vec<AllObjects>, Rc<SymbolTable>)> {
     let l = Lexer::new(text);
     let mut p = Parser::new(l);
     let program = p.parse_program();

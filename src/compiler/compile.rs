@@ -16,7 +16,7 @@ use crate::{
         AllObjects,
     },
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Result};
 
 impl Compiler {
     /// Entrypoint for the compilation process. This method will be called

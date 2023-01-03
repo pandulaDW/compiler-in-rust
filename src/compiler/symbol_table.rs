@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type SymbolScope = &'static str;
 
@@ -22,26 +22,33 @@ impl Symbol {
     }
 }
 
-#[derive(Clone, Default)]
+/// A Wrapper around `SymbolTableDefinition` to give immutable references access to mutable symbol table methods
+/// It also implements methods from `SymbolTableDefinition` with immutable references.
+#[derive(Clone)]
 pub struct SymbolTable {
+    table: RefCell<SymbolTableDefinition>,
+}
+
+impl SymbolTable {
+    pub fn define(&self, name: &str) -> Symbol {
+        self.table.borrow_mut().define(name)
+    }
+
+    pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        self.table.borrow().resolve(name)
+    }
+}
+
+#[derive(Clone)]
+pub struct SymbolTableDefinition {
     store: HashMap<String, Symbol>,
     num_definitions: usize,
     outer: Option<Rc<SymbolTable>>,
 }
 
-impl SymbolTable {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn new_enclosed(outer: Rc<SymbolTable>) -> Self {
-        let mut s = Self::new();
-        s.outer = Some(outer);
-        s
-    }
-
+impl SymbolTableDefinition {
     /// Create and store a new `Symbol` definition
-    pub fn define(&mut self, name: &str) -> Symbol {
+    fn define(&mut self, name: &str) -> Symbol {
         let mut symbol = Symbol::new(name, GLOBAL_SCOPE, self.num_definitions);
         if self.outer.is_some() {
             symbol.scope = LOCAL_SCOPE
@@ -53,12 +60,30 @@ impl SymbolTable {
     }
 
     /// Resolves and return the symbol associated with the name
-    pub fn resolve(&self, name: &str) -> Option<&Symbol> {
-        let mut result = self.store.get(name);
+    fn resolve(&self, name: &str) -> Option<Symbol> {
+        let mut result = self.store.get(name).cloned();
         if result.is_none() && self.outer.is_some() {
             result = self.outer.as_ref().unwrap().resolve(name);
         }
         result
+    }
+}
+
+impl SymbolTable {
+    pub fn new() -> Self {
+        Self {
+            table: RefCell::new(SymbolTableDefinition {
+                store: HashMap::new(),
+                num_definitions: 0,
+                outer: None,
+            }),
+        }
+    }
+
+    pub fn new_enclosed(outer: Rc<SymbolTable>) -> Self {
+        let s = Self::new();
+        s.table.borrow_mut().outer = Some(outer);
+        s
     }
 }
 
@@ -77,22 +102,22 @@ mod tests {
         expected.insert("e".to_string(), Symbol::new("e", LOCAL_SCOPE, 0));
         expected.insert("f".to_string(), Symbol::new("f", LOCAL_SCOPE, 1));
 
-        let mut global = SymbolTable::new();
+        let global = SymbolTable::new();
         assert_eq!(global.define("a"), *expected.get("a").unwrap());
         assert_eq!(global.define("b"), *expected.get("b").unwrap());
 
-        let mut first_local = SymbolTable::new_enclosed(Rc::new(global));
+        let first_local = SymbolTable::new_enclosed(Rc::new(global));
         assert_eq!(first_local.define("c"), *expected.get("c").unwrap());
         assert_eq!(first_local.define("d"), *expected.get("d").unwrap());
 
-        let mut second_local = SymbolTable::new_enclosed(Rc::new(first_local));
+        let second_local = SymbolTable::new_enclosed(Rc::new(first_local));
         assert_eq!(second_local.define("e"), *expected.get("e").unwrap());
         assert_eq!(second_local.define("f"), *expected.get("f").unwrap());
     }
 
     #[test]
     fn test_resolve() {
-        let mut global = SymbolTable::new();
+        let global = SymbolTable::new();
         global.define("a");
         global.define("b");
 
@@ -101,7 +126,7 @@ mod tests {
             Symbol::new("b", GLOBAL_SCOPE, 1),
         ];
 
-        for sym in expected.iter() {
+        for sym in expected {
             let resolved = global.resolve(&sym.name);
             assert!(resolved.is_some());
             assert_eq!(sym, resolved.unwrap());
@@ -112,11 +137,11 @@ mod tests {
 
     #[test]
     fn test_resolve_local() {
-        let mut global = SymbolTable::new();
+        let global = SymbolTable::new();
         global.define("a");
         global.define("b");
 
-        let mut local = SymbolTable::new_enclosed(Rc::new(global));
+        let local = SymbolTable::new_enclosed(Rc::new(global));
         local.define("c");
         local.define("d");
 
@@ -127,7 +152,7 @@ mod tests {
             Symbol::new("d", LOCAL_SCOPE, 1),
         ];
 
-        for sym in expected.iter() {
+        for sym in expected {
             let resolved = local.resolve(&sym.name);
             assert!(resolved.is_some());
             assert_eq!(sym, resolved.unwrap());
@@ -136,16 +161,16 @@ mod tests {
 
     #[test]
     fn test_resolve_nested_and_local() {
-        let mut global = SymbolTable::new();
+        let global = SymbolTable::new();
         global.define("a");
         global.define("b");
 
-        let mut first_local = SymbolTable::new_enclosed(Rc::new(global));
+        let first_local = SymbolTable::new_enclosed(Rc::new(global));
         first_local.define("c");
         first_local.define("d");
         let first_local_ref = Rc::new(first_local);
 
-        let mut second_local = SymbolTable::new_enclosed(first_local_ref.clone());
+        let second_local = SymbolTable::new_enclosed(first_local_ref.clone());
         second_local.define("e");
         second_local.define("f");
         let second_local_ref = Rc::new(second_local);
@@ -172,7 +197,7 @@ mod tests {
             for sym in tc.1 {
                 let resolved = tc.0.resolve(&sym.name);
                 assert!(resolved.is_some());
-                assert_eq!(&sym, resolved.unwrap());
+                assert_eq!(sym, resolved.unwrap());
             }
         }
     }
