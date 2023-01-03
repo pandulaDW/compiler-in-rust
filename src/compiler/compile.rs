@@ -7,9 +7,9 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_ARRAY, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE,
-        OP_GET_GLOBAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS,
-        OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SUB,
-        OP_TRUE,
+        OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP,
+        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN,
+        OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
     },
     object::{
         objects::{CompiledFunctionObj, Integer, StringObj},
@@ -29,11 +29,7 @@ impl Compiler {
                 }
             }
             AllNodes::Statements(stmt) => match stmt {
-                AllStatements::Let(s) => {
-                    self.compile(AllNodes::Expressions(*s.value))?;
-                    let symbol = self.symbol_table.define(&s.name.value);
-                    self.emit(OP_SET_GLOBAL, &[symbol.index]);
-                }
+                AllStatements::Let(s) => self.compile_let_statements(s)?,
                 AllStatements::Block(b) => {
                     for stmt in b.statements {
                         self.compile(AllNodes::Statements(stmt))?;
@@ -77,11 +73,30 @@ impl Compiler {
         Ok(())
     }
 
+    fn compile_let_statements(&mut self, s: statements::LetStatement) -> Result<()> {
+        self.compile(AllNodes::Expressions(*s.value))?;
+        let symbol = self.symbol_table.define(&s.name.value);
+
+        if symbol.is_local() {
+            self.emit(OP_SET_LOCAL, &[symbol.index]);
+        } else {
+            self.emit(OP_SET_GLOBAL, &[symbol.index]);
+        }
+
+        Ok(())
+    }
+
     fn compile_identifier(&mut self, v: expressions::Identifier) -> Result<()> {
         let Some(symbol) = self.symbol_table.resolve(&v.value) else {
             return Err(anyhow!("undefined variable {}", &v.value));
         };
-        self.emit(OP_GET_GLOBAL, &[symbol.index]);
+
+        if symbol.is_local() {
+            self.emit(OP_GET_LOCAL, &[symbol.index]);
+        } else {
+            self.emit(OP_GET_GLOBAL, &[symbol.index]);
+        }
+
         Ok(())
     }
 

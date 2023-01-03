@@ -20,6 +20,10 @@ impl Symbol {
             index,
         }
     }
+
+    pub fn is_local(&self) -> bool {
+        self.scope == LOCAL_SCOPE
+    }
 }
 
 /// A Wrapper around `SymbolTableDefinition` to give immutable references access to mutable symbol table methods

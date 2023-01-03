@@ -666,30 +666,30 @@ mod tests {
                         make(OP_RETURN_VALUE, &[]),
                     ]),
                 ],
-                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
+                vec![make(OP_CONSTANT, &[1]), make(OP_POP, &[])],
             ),
-            // (
-            //     "fn() {
-            //         let a = 55;
-            //         let b = 77;
-            //         a+b
-            //     }",
-            //     vec![
-            //         Int(55),
-            //         Int(77),
-            //         Ins(vec![
-            //             make(OP_CONSTANT, &[0]),
-            //             make(OP_SET_LOCAL, &[0]),
-            //             make(OP_CONSTANT, &[1]),
-            //             make(OP_SET_LOCAL, &[1]),
-            //             make(OP_GET_LOCAL, &[0]),
-            //             make(OP_GET_LOCAL, &[1]),
-            //             make(OP_ADD, &[]),
-            //             make(OP_RETURN_VALUE, &[]),
-            //         ]),
-            //     ],
-            //     vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
-            // ),
+            (
+                "fn() {
+                    let a = 55;
+                    let b = 77;
+                    a+b
+                }",
+                vec![
+                    Int(55),
+                    Int(77),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[0]),
+                        make(OP_SET_LOCAL, &[0]),
+                        make(OP_CONSTANT, &[1]),
+                        make(OP_SET_LOCAL, &[1]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_GET_LOCAL, &[1]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+            ),
         ];
         run_compiler_tests(test_cases);
     }
