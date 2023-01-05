@@ -693,6 +693,50 @@ mod tests {
         ];
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_global_assignments() {
+        use Literal::{Ins, Int};
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "let x = 10;
+            x = 20;",
+                vec![Int(10), Int(20)],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_ASSIGN_GLOBAL, &[0]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "let x = 10;
+                 fn() {
+                    x = 30 + 50;
+                 }",
+                vec![
+                    Int(10),
+                    Int(30),
+                    Int(50),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[1]),
+                        make(OP_CONSTANT, &[2]),
+                        make(OP_ADD, &[]),
+                        make(OP_ASSIGN_GLOBAL, &[0]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]

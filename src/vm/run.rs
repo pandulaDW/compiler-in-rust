@@ -33,6 +33,7 @@ impl VM {
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
                 OP_CALL => self.run_call_expression()?,
+                OP_ASSIGN_GLOBAL => self.run_assign_global_instruction()?,
                 OP_RETURN_VALUE => {
                     self.pop_frame();
                 }
@@ -139,6 +140,22 @@ impl VM {
             self.globals[global_index] = last_pushed;
         }
 
+        Ok(())
+    }
+
+    fn run_assign_global_instruction(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let var_index = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 2;
+
+        let last_pushed = self.pop()?;
+        if self.globals.get(var_index).is_none() {
+            return Err(anyhow!("variable at index {var_index} not found"));
+        } else {
+            self.globals[var_index] = last_pushed;
+        }
+
+        self.push(NULL)?; // assignment is an expression and will return null
         Ok(())
     }
 

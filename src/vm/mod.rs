@@ -315,6 +315,20 @@ mod tests {
                 returnsOneReturner()();",
                 Int(1),
             ),
+            (
+                "let x = 10;
+                 x = 20;
+                 x;",
+                Int(20),
+            ),
+            (
+                "let x = 10;
+                 fn() {
+                    x = 30 + 50;
+                    x;
+                 }()",
+                Int(80),
+            ),
         ];
         let num_test_cases = test_cases.len();
 

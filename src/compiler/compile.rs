@@ -6,8 +6,8 @@ use crate::{
         AllNodes,
     },
     code::{
-        make, OP_ADD, OP_ARRAY, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL, OP_FALSE,
-        OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP,
+        make, OP_ADD, OP_ARRAY, OP_ASSIGN_GLOBAL, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL,
+        OP_FALSE, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP,
         OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN,
         OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
     },
@@ -16,7 +16,7 @@ use crate::{
         AllObjects,
     },
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 
 impl Compiler {
     /// Entrypoint for the compilation process. This method will be called
@@ -55,6 +55,7 @@ impl Compiler {
                 AllExpressions::IndexExpression(v) => self.compile_index_expression(v)?,
                 AllExpressions::FunctionLiteral(v) => self.compile_function_literals(v)?,
                 AllExpressions::CallExpression(v) => self.compile_call_expressions(v)?,
+                AllExpressions::Assignment(v) => self.compile_assignment_expression(v)?,
                 _ => unimplemented!(),
             },
         }
@@ -266,6 +267,21 @@ impl Compiler {
     fn compile_call_expressions(&mut self, v: expressions::CallExpression) -> Result<()> {
         self.compile(AllNodes::Expressions(*v.function))?;
         self.emit(OP_CALL, &[]);
+        Ok(())
+    }
+
+    fn compile_assignment_expression(
+        &mut self,
+        v: expressions::AssignmentExpression,
+    ) -> Result<()> {
+        self.compile(AllNodes::Expressions(*v.value))?;
+
+        let Some(resolved )= self.symbol_table.resolve(&v.ident.value) else {
+             return Err(anyhow!("variable with name {}, not found",&v.ident.value));
+        };
+
+        self.emit(OP_ASSIGN_GLOBAL, &[resolved.index]);
+
         Ok(())
     }
 }

@@ -37,6 +37,7 @@ pub const OP_RETURN_VALUE: Opcode = 23;
 pub const OP_RETURN: Opcode = 24;
 pub const OP_GET_LOCAL: Opcode = 25;
 pub const OP_SET_LOCAL: Opcode = 26;
+pub const OP_ASSIGN_GLOBAL: Opcode = 27;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -86,6 +87,7 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_RETURN => Ok(Definition::new("OpReturn", vec![])),
         OP_GET_LOCAL => Ok(Definition::new("OpGetLocal", vec![1])), // 256 local bindings
         OP_SET_LOCAL => Ok(Definition::new("OpSetLocal", vec![1])),
+        OP_ASSIGN_GLOBAL => Ok(Definition::new("OpAssignGlobal", vec![2])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
