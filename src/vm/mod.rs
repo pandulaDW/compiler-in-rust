@@ -272,6 +272,49 @@ mod tests {
             returnsOneReturner()();",
                 Int(1),
             ),
+            (
+                "let one = fn() { let one = 1; one };
+            one();",
+                Int(1),
+            ),
+            (
+                "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+            oneAndTwo();",
+                Int(3),
+            ),
+            (
+                "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+            let threeAndFour = fn() { let three = 3; let four = 4; three + four; };
+            oneAndTwo() + threeAndFour();",
+                Int(10),
+            ),
+            (
+                "let firstFoobar = fn() { let foobar = 50; foobar; };
+            let secondFoobar = fn() { let foobar = 100; foobar; };
+            firstFoobar() + secondFoobar();",
+                Int(150),
+            ),
+            (
+                "let globalSeed = 50;
+                let minusOne = fn() {
+                    let num = 1;
+                    globalSeed - num;
+                }
+                let minusTwo = fn() {
+                    let num = 2;
+                    globalSeed - num;
+                }
+                minusOne() + minusTwo();",
+                Int(97),
+            ),
+            (
+                "let returnsOneReturner = fn() {
+                    let returnsOne = fn() { 1; };
+                    returnsOne;
+                };
+                returnsOneReturner()();",
+                Int(1),
+            ),
         ];
         let num_test_cases = test_cases.len();
 

@@ -27,6 +27,8 @@ impl VM {
                 OP_BANG => self.run_prefix_bang()?,
                 OP_SET_GLOBAL => self.run_set_global_instruction()?,
                 OP_GET_GLOBAL => self.run_get_global_instruction()?,
+                OP_SET_LOCAL => self.run_set_local_instruction()?,
+                OP_GET_LOCAL => self.run_get_local_instruction()?,
                 OP_ARRAY => self.run_array_literal_instruction()?,
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
@@ -140,6 +142,21 @@ impl VM {
         Ok(())
     }
 
+    fn run_set_local_instruction(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let local_index = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 1;
+
+        let last_pushed = self.pop()?;
+        if self.current_frame().locals.get(local_index).is_none() {
+            self.current_frame().locals.push(last_pushed);
+        } else {
+            self.current_frame().locals[local_index] = last_pushed;
+        }
+
+        Ok(())
+    }
+
     fn run_get_global_instruction(&mut self) -> Result<()> {
         let ip = self.current_frame().ip;
         let global_index =
@@ -149,6 +166,18 @@ impl VM {
             return Err(anyhow!("variable at index {global_index} not found"));
         };
         self.push(v.clone())?;
+        Ok(())
+    }
+
+    fn run_get_local_instruction(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let local_index = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 1;
+        let Some(v) = self.current_frame().locals.get(local_index) else {
+            return Err(anyhow!("variable at index {local_index} not found"));
+        };
+        let cloned = v.clone();
+        self.push(cloned)?;
         Ok(())
     }
 
