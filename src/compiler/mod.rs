@@ -611,7 +611,7 @@ mod tests {
                 ],
                 vec![
                     make(OP_CONSTANT, &[1]),
-                    make(OP_CALL, &[]),
+                    make(OP_CALL, &[0]),
                     make(OP_POP, &[]),
                 ],
             ),
@@ -625,7 +625,7 @@ mod tests {
                     make(OP_CONSTANT, &[1]),
                     make(OP_SET_GLOBAL, &[0]),
                     make(OP_GET_GLOBAL, &[0]),
-                    make(OP_CALL, &[]),
+                    make(OP_CALL, &[0]),
                     make(OP_POP, &[]),
                 ],
             ),
@@ -731,6 +731,49 @@ mod tests {
                     make(OP_CONSTANT, &[0]),
                     make(OP_SET_GLOBAL, &[0]),
                     make(OP_CONSTANT, &[3]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "let oneArg = fn(a) { a };
+                 oneArg(24)",
+                vec![
+                    Ins(vec![make(OP_GET_LOCAL, &[0]), make(OP_RETURN_VALUE, &[])]),
+                    Int(24),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CALL, &[1]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "let manyArg = fn(a, b, c) { a; b; c; };
+                 manyArg(24, 25, 26)",
+                vec![
+                    Ins(vec![
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_POP, &[]),
+                        make(OP_GET_LOCAL, &[1]),
+                        make(OP_POP, &[]),
+                        make(OP_GET_LOCAL, &[2]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Int(24),
+                    Int(25),
+                    Int(26),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[1]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_CONSTANT, &[3]),
+                    make(OP_CALL, &[3]),
                     make(OP_POP, &[]),
                 ],
             ),

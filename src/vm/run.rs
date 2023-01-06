@@ -304,11 +304,23 @@ impl VM {
     }
 
     fn run_call_expression(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let num_args = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 1;
+
+        let mut local_args = vec![];
+        for _ in 0..num_args {
+            let arg = self.pop()?;
+            local_args.push(arg);
+        }
+        local_args.reverse();
+
         let func = match self.pop()? {
             AllObjects::CompiledFunction(v) => v,
             v => return Err(anyhow!("expected a function, found {}", v.inspect())),
         };
-        self.push_frame(Frame::new(func));
+        self.push_frame(Frame::new(func, local_args));
+
         self.run()?;
         Ok(())
     }

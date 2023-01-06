@@ -178,6 +178,11 @@ impl Compiler {
 
     fn compile_function_literals(&mut self, expr: expressions::FunctionLiteral) -> Result<()> {
         self.enter_scope();
+
+        for param in expr.parameters {
+            self.symbol_table.define(&param.value);
+        }
+
         self.compile(AllNodes::Statements(AllStatements::Block(expr.body)))?;
 
         // replace last pop with return
@@ -266,7 +271,13 @@ impl Compiler {
 
     fn compile_call_expressions(&mut self, v: expressions::CallExpression) -> Result<()> {
         self.compile(AllNodes::Expressions(*v.function))?;
-        self.emit(OP_CALL, &[]);
+
+        let num_args = v.arguments.len();
+        for arg in v.arguments {
+            self.compile(AllNodes::Expressions(arg))?;
+        }
+
+        self.emit(OP_CALL, &[num_args]);
         Ok(())
     }
 

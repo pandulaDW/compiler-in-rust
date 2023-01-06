@@ -16,11 +16,13 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(func: CompiledFunctionObj) -> Self {
+    /// Create a new frame with the compiled function and a arguments vector as the initial
+    /// locals list.
+    pub fn new(func: CompiledFunctionObj, arguments: Vec<AllObjects>) -> Self {
         Self {
             func,
             ip: 0,
-            locals: vec![],
+            locals: arguments,
         }
     }
 

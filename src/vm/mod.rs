@@ -50,7 +50,7 @@ impl VM {
     /// Creates a new VM using the provided bytecode
     pub fn new(bytecode: ByteCode) -> Self {
         let main_fn = CompiledFunctionObj::new(bytecode.instructions);
-        let main_frame = Frame::new(main_fn);
+        let main_frame = Frame::new(main_fn, vec![]);
 
         let mut frames = Vec::with_capacity(MAX_FRAMES);
         frames.push(main_frame);
@@ -328,6 +328,56 @@ mod tests {
                     x;
                  }()",
                 Int(80),
+            ),
+            (
+                "let identity = fn(a) { a; };
+                identity(4);",
+                Int(4),
+            ),
+            (
+                "let sum = fn(a, b) { a + b; };
+                sum(1, 2);",
+                Int(3),
+            ),
+            (
+                "let calc = fn(a, b) {
+                    let c = a + b;
+                    let d = 10;
+                    d - c;
+                };
+                calc(1, 2);",
+                Int(7),
+            ),
+            (
+                "let sum = fn(a, b) {
+                    let c = a + b;
+                    c; 
+                };
+                sum(1, 2) + sum(3, 4);",
+                Int(10),
+            ),
+            (
+                "let sum = fn(a, b) {
+                   let c = a + b;
+                   c; 
+                };
+                let outer = fn() {
+                    sum(1, 2) + sum(3, 4);
+                };
+                outer();",
+                Int(10),
+            ),
+            (
+                "let globalNum = 10;
+                 let sum = fn(a, b) {
+                    let c = a + b;
+                    c + globalNum;
+                 };
+                let outer = fn() {
+                   sum(1, 2) + sum(3, 4) + globalNum;
+                };
+                outer() + globalNum;",
+                Int(50),
             ),
         ];
         let num_test_cases = test_cases.len();
