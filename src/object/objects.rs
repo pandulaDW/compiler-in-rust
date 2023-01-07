@@ -66,11 +66,15 @@ impl Object for Error {
 #[derive(Clone)]
 pub struct CompiledFunctionObj {
     pub instructions: Instructions,
+    pub num_args: usize,
 }
 
 impl CompiledFunctionObj {
-    pub fn new(instructions: Instructions) -> Self {
-        Self { instructions }
+    pub fn new(instructions: Instructions, num_args: usize) -> Self {
+        Self {
+            instructions,
+            num_args,
+        }
     }
 }
 

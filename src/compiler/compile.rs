@@ -179,7 +179,7 @@ impl Compiler {
     fn compile_function_literals(&mut self, expr: expressions::FunctionLiteral) -> Result<()> {
         self.enter_scope();
 
-        for param in expr.parameters {
+        for param in &expr.parameters {
             self.symbol_table.define(&param.value);
         }
 
@@ -199,7 +199,10 @@ impl Compiler {
 
         let fn_instructions = self.leave_scope();
 
-        let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj::new(fn_instructions));
+        let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj::new(
+            fn_instructions,
+            expr.parameters.len(),
+        ));
         let constant_index = self.add_constant(compiled_fn);
         self.emit(OP_CONSTANT, &[constant_index]);
 

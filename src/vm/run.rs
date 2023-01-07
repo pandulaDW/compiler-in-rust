@@ -319,6 +319,15 @@ impl VM {
             AllObjects::CompiledFunction(v) => v,
             v => return Err(anyhow!("expected a function, found {}", v.inspect())),
         };
+
+        if local_args.len() != func.num_args {
+            return Err(anyhow!(
+                "wrong number of arguments: want={}, got={}",
+                func.num_args,
+                local_args.len()
+            ));
+        }
+
         self.push_frame(Frame::new(func, local_args));
 
         self.run()?;

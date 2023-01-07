@@ -49,7 +49,7 @@ pub struct VM {
 impl VM {
     /// Creates a new VM using the provided bytecode
     pub fn new(bytecode: ByteCode) -> Self {
-        let main_fn = CompiledFunctionObj::new(bytecode.instructions);
+        let main_fn = CompiledFunctionObj::new(bytecode.instructions, 0);
         let main_frame = Frame::new(main_fn, vec![]);
 
         let mut frames = Vec::with_capacity(MAX_FRAMES);
@@ -403,6 +403,38 @@ mod tests {
 
             let stack_elem = vm.result();
             test_expected_object(tc.1, stack_elem.unwrap());
+        }
+    }
+
+    #[test]
+    fn test_vm_fails() {
+        let test_cases = vec![
+            (
+                "fn() { 1; }(1);",
+                "wrong number of arguments: want=0, got=1",
+            ),
+            (
+                "fn(a) { a; }();",
+                "wrong number of arguments: want=1, got=0",
+            ),
+            (
+                "fn(a, b) { a + b; }(1);",
+                "wrong number of arguments: want=2, got=1",
+            ),
+        ];
+
+        for tc in test_cases {
+            let program = parse(tc.0);
+            let mut comp = Compiler::new();
+            if let Err(e) = comp.compile(program.make_node()) {
+                panic!("input: {}, compiler error:  {}", tc.0, e);
+            }
+            let mut vm = VM::new(comp.byte_code());
+            if let Err(e) = vm.run() {
+                assert_eq!(e.to_string(), tc.1);
+            } else {
+                panic!("expected the program to fail with the given error.")
+            }
         }
     }
 }
