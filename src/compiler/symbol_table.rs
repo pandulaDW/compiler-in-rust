@@ -35,10 +35,7 @@ impl SymbolTable {
     /// Creates a new symbol table and inserts the builtins
     pub fn new() -> Self {
         let s = SymbolTable {
-            table: RefCell::new(SymbolTableDefinition {
-                store: HashMap::new(),
-                num_definitions: 0,
-            }),
+            table: RefCell::new(SymbolTableDefinition::default()),
             outer: None,
         };
 
@@ -81,7 +78,7 @@ impl SymbolTable {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SymbolTableDefinition {
     store: HashMap<String, Symbol>,
     num_definitions: usize,

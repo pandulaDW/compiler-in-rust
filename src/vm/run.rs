@@ -324,11 +324,9 @@ impl VM {
         let num_args = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
         self.current_frame().ip += 1;
 
-        let mut local_args = vec![];
-        for _ in 0..num_args {
-            let arg = self.pop()?;
-            local_args.push(arg);
-        }
+        let mut local_args = (0..num_args)
+            .filter_map(|_| self.pop().ok())
+            .collect::<Vec<AllObjects>>();
         local_args.reverse();
 
         match self.pop()? {

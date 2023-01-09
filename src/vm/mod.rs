@@ -385,7 +385,7 @@ mod tests {
             ("len([1, 2, 3])", Int(3)),
             ("len([])", Int(0)),
             ("let v = [1,2,3]; push(v,10)", Literal::Null),
-            ("let v = [1,2,3]; push(v,10); v[3]", Int(10)),
+            ("let v = [1,2,3]; push(v,10); len(v) + v[3]", Int(14)),
         ];
         let num_test_cases = test_cases.len();
 
