@@ -1,4 +1,7 @@
-use super::Compiler;
+use super::{
+    symbol_table::{self, Symbol},
+    Compiler,
+};
 use crate::{
     ast::{
         expressions::{self, AllExpressions},
@@ -7,8 +10,8 @@ use crate::{
     },
     code::{
         make, OP_ADD, OP_ARRAY, OP_ASSIGN_GLOBAL, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL,
-        OP_FALSE, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX, OP_JUMP,
-        OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN,
+        OP_FALSE, OP_GET_BUILTIN, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX,
+        OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN,
         OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
     },
     object::{
@@ -78,7 +81,7 @@ impl Compiler {
         self.compile(AllNodes::Expressions(*s.value))?;
         let symbol = self.symbol_table.define(&s.name.value);
 
-        if symbol.is_local() {
+        if symbol.scope == symbol_table::LOCAL_SCOPE {
             self.emit(OP_SET_LOCAL, &[symbol.index]);
         } else {
             self.emit(OP_SET_GLOBAL, &[symbol.index]);
@@ -91,13 +94,7 @@ impl Compiler {
         let Some(symbol) = self.symbol_table.resolve(&v.value) else {
             return Err(anyhow!("undefined variable {}", &v.value));
         };
-
-        if symbol.is_local() {
-            self.emit(OP_GET_LOCAL, &[symbol.index]);
-        } else {
-            self.emit(OP_GET_GLOBAL, &[symbol.index]);
-        }
-
+        self.load_symbol(symbol);
         Ok(())
     }
 
@@ -289,13 +286,19 @@ impl Compiler {
         v: expressions::AssignmentExpression,
     ) -> Result<()> {
         self.compile(AllNodes::Expressions(*v.value))?;
-
         let Some(resolved )= self.symbol_table.resolve(&v.ident.value) else {
              return Err(anyhow!("variable with name {}, not found",&v.ident.value));
         };
-
         self.emit(OP_ASSIGN_GLOBAL, &[resolved.index]);
-
         Ok(())
+    }
+
+    fn load_symbol(&mut self, s: Symbol) {
+        match s.scope {
+            symbol_table::GLOBAL_SCOPE => self.emit(OP_GET_GLOBAL, &[s.index]),
+            symbol_table::LOCAL_SCOPE => self.emit(OP_GET_LOCAL, &[s.index]),
+            symbol_table::BUILTIN_SCOPE => self.emit(OP_GET_BUILTIN, &[s.index]),
+            _ => unreachable!(),
+        };
     }
 }

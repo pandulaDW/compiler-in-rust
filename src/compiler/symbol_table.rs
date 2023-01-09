@@ -1,9 +1,11 @@
+use crate::object::builtins::BUILTIN_FUNCTIONS;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type SymbolScope = &'static str;
 
-const GLOBAL_SCOPE: &str = "GLOBAL";
-const LOCAL_SCOPE: &str = "LOCAL";
+pub const GLOBAL_SCOPE: SymbolScope = "GLOBAL";
+pub const LOCAL_SCOPE: SymbolScope = "LOCAL";
+pub const BUILTIN_SCOPE: SymbolScope = "BUILTIN";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Symbol {
@@ -20,10 +22,6 @@ impl Symbol {
             index,
         }
     }
-
-    pub fn is_local(&self) -> bool {
-        self.scope == LOCAL_SCOPE
-    }
 }
 
 /// A Wrapper around `SymbolTableDefinition` to give immutable references access to mutable symbol table methods
@@ -34,15 +32,21 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    /// Creates a new symbol table
+    /// Creates a new symbol table and inserts the builtins
     pub fn new() -> Self {
-        Self {
+        let s = SymbolTable {
             table: RefCell::new(SymbolTableDefinition {
                 store: HashMap::new(),
                 num_definitions: 0,
             }),
             outer: None,
+        };
+
+        for (i, v) in BUILTIN_FUNCTIONS {
+            s.define_builtin(usize::try_from(*i).unwrap(), v);
         }
+
+        s
     }
 
     /// Creates a new symbol table with the given outer table as its attached outer table
@@ -55,6 +59,16 @@ impl SymbolTable {
     /// A wrapper around the `SymbolTableDefinition`'s `define` method
     pub fn define(&self, name: &str) -> Symbol {
         self.table.borrow_mut().define(name, self.outer.is_some())
+    }
+
+    /// Defines builtin functions in the BUILTIN_SCOPE
+    pub fn define_builtin(&self, index: usize, name: &str) -> Symbol {
+        let symbol = Symbol::new(name, BUILTIN_SCOPE, index);
+        self.table
+            .borrow_mut()
+            .store
+            .insert(name.to_string(), symbol.clone());
+        symbol
     }
 
     /// Returns the symbol associated with the given name by recursively checking all the scopes
@@ -89,7 +103,7 @@ impl SymbolTableDefinition {
 
 #[cfg(test)]
 mod tests {
-    use super::{Symbol, SymbolTable, GLOBAL_SCOPE, LOCAL_SCOPE};
+    use super::{Symbol, SymbolTable, BUILTIN_SCOPE, GLOBAL_SCOPE, LOCAL_SCOPE};
     use std::{collections::HashMap, rc::Rc};
 
     #[test]
@@ -198,6 +212,37 @@ mod tests {
                 let resolved = tc.0.resolve(&sym.name);
                 assert!(resolved.is_some());
                 assert_eq!(sym, resolved.unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn test_define_resolve_builtins() {
+        let global = SymbolTable::new();
+        let global_ref = Rc::new(global);
+
+        let first_local = SymbolTable::new_enclosed(global_ref.clone());
+        let first_local_ref = Rc::new(first_local);
+
+        let second_local = SymbolTable::new_enclosed(first_local_ref.clone());
+        let second_local_ref = Rc::new(second_local);
+
+        let expected = vec![
+            Symbol::new("a", BUILTIN_SCOPE, 0),
+            Symbol::new("c", BUILTIN_SCOPE, 1),
+            Symbol::new("e", BUILTIN_SCOPE, 2),
+            Symbol::new("f", BUILTIN_SCOPE, 3),
+        ];
+
+        for (i, v) in expected.iter().enumerate() {
+            global_ref.define_builtin(i, &v.name);
+        }
+
+        for table in [global_ref, first_local_ref, second_local_ref] {
+            for sym in &expected {
+                let result = table.resolve(&sym.name);
+                assert!(result.is_some());
+                assert_eq!(*sym, result.unwrap());
             }
         }
     }

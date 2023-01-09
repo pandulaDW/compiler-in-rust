@@ -734,48 +734,40 @@ mod tests {
                     make(OP_POP, &[]),
                 ],
             ),
+        ];
+        run_compiler_tests(test_cases);
+    }
+
+    #[test]
+    fn test_builtins() {
+        use Literal::{Ins, Int};
+        let test_cases: Vec<CompilerTestCase> = vec![
             (
-                "let oneArg = fn(a) { a };
-                 oneArg(24)",
+                "
+        len([]);
+        push([], 1);",
+                vec![Int(1)],
                 vec![
-                    Ins(vec![make(OP_GET_LOCAL, &[0]), make(OP_RETURN_VALUE, &[])]),
-                    Int(24),
-                ],
-                vec![
-                    make(OP_CONSTANT, &[0]),
-                    make(OP_SET_GLOBAL, &[0]),
-                    make(OP_GET_GLOBAL, &[0]),
-                    make(OP_CONSTANT, &[1]),
+                    make(OP_GET_BUILTIN, &[1]),
+                    make(OP_ARRAY, &[0]),
                     make(OP_CALL, &[1]),
+                    make(OP_POP, &[]),
+                    make(OP_GET_BUILTIN, &[3]),
+                    make(OP_ARRAY, &[0]),
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_CALL, &[2]),
                     make(OP_POP, &[]),
                 ],
             ),
             (
-                "let manyArg = fn(a, b, c) { a; b; c; };
-                 manyArg(24, 25, 26)",
-                vec![
-                    Ins(vec![
-                        make(OP_GET_LOCAL, &[0]),
-                        make(OP_POP, &[]),
-                        make(OP_GET_LOCAL, &[1]),
-                        make(OP_POP, &[]),
-                        make(OP_GET_LOCAL, &[2]),
-                        make(OP_RETURN_VALUE, &[]),
-                    ]),
-                    Int(24),
-                    Int(25),
-                    Int(26),
-                ],
-                vec![
-                    make(OP_CONSTANT, &[0]),
-                    make(OP_SET_GLOBAL, &[0]),
-                    make(OP_GET_GLOBAL, &[0]),
-                    make(OP_CONSTANT, &[1]),
-                    make(OP_CONSTANT, &[2]),
-                    make(OP_CONSTANT, &[3]),
-                    make(OP_CALL, &[3]),
-                    make(OP_POP, &[]),
-                ],
+                "fn() { len([]) }",
+                vec![Ins(vec![
+                    make(OP_GET_BUILTIN, &[1]),
+                    make(OP_ARRAY, &[0]),
+                    make(OP_CALL, &[1]),
+                    make(OP_RETURN_VALUE, &[]),
+                ])],
+                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
             ),
         ];
         run_compiler_tests(test_cases);
