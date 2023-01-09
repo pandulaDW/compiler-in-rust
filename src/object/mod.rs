@@ -17,7 +17,7 @@ pub enum ObjectType {
     Error,
     Return,
     CompiledFunction,
-    _BuiltInFunction,
+    BuiltInFunction,
     Array,
     HashMap,
 }
@@ -32,7 +32,7 @@ impl Display for ObjectType {
             ObjectType::Error => "ERROR",
             ObjectType::Return => "RETURN",
             ObjectType::CompiledFunction => "COMPILED_FUNCTION",
-            ObjectType::_BuiltInFunction => "BUILTIN_FUNCTION",
+            ObjectType::BuiltInFunction => "BUILTIN_FUNCTION",
             ObjectType::Array => "ARRAY",
             ObjectType::HashMap => "HASH_MAP",
         };
@@ -52,7 +52,7 @@ pub enum AllObjects {
     _Error(objects::Error),
     _ReturnValue(Box<AllObjects>),
     CompiledFunction(objects::CompiledFunctionObj),
-    _BuiltinFunction(objects::BuiltinFunctionObj),
+    BuiltinFunction(objects::BuiltinFunctionObj),
     ArrayObj(objects::ArrayObj),
     HashMap(objects::HashMapObj),
 }
@@ -67,7 +67,7 @@ impl Object for AllObjects {
             Self::_Error(v) => v.inspect(),
             Self::_ReturnValue(v) => v.inspect(),
             Self::CompiledFunction(v) => v.inspect(),
-            Self::_BuiltinFunction(v) => v.inspect(),
+            Self::BuiltinFunction(v) => v.inspect(),
             Self::ArrayObj(v) => v.inspect(),
             Self::HashMap(v) => v.inspect(),
         }
@@ -84,7 +84,7 @@ impl AllObjects {
             Self::_Error(_) => ObjectType::Error,
             Self::_ReturnValue(_) => ObjectType::Return,
             Self::CompiledFunction(_) => ObjectType::CompiledFunction,
-            Self::_BuiltinFunction(_) => ObjectType::CompiledFunction,
+            Self::BuiltinFunction(_) => ObjectType::BuiltInFunction,
             Self::ArrayObj(_) => ObjectType::Array,
             Self::HashMap(_) => ObjectType::HashMap,
         }

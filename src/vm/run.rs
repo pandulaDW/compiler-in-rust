@@ -4,6 +4,7 @@ use super::{frame::Frame, FALSE, NULL, TRUE, VM};
 use crate::{
     code::{self, *},
     object::{
+        builtins::get_builtin_function,
         objects::{ArrayObj, HashMapObj, Integer, StringObj},
         AllObjects, Object, ObjectType,
     },
@@ -34,6 +35,7 @@ impl VM {
                 OP_INDEX => self.run_index_expression()?,
                 OP_CALL => self.run_call_expression()?,
                 OP_ASSIGN_GLOBAL => self.run_assign_global_instruction()?,
+                OP_GET_BUILTIN => self.run_get_builtin()?,
                 OP_RETURN_VALUE => {
                     self.pop_frame();
                 }
@@ -171,6 +173,20 @@ impl VM {
             self.current_frame().locals[local_index] = last_pushed;
         }
 
+        Ok(())
+    }
+
+    fn run_get_builtin(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let builtin_index =
+            code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 1;
+
+        let Some(func) = get_builtin_function(builtin_index) else {
+            return Err(anyhow!("builtin function with index {builtin_index} not found"));
+        };
+
+        self.push(func)?;
         Ok(())
     }
 
@@ -315,22 +331,32 @@ impl VM {
         }
         local_args.reverse();
 
-        let func = match self.pop()? {
-            AllObjects::CompiledFunction(v) => v,
+        match self.pop()? {
+            AllObjects::CompiledFunction(func) => {
+                if local_args.len() != func.num_args {
+                    return Err(anyhow!(
+                        "wrong number of arguments: want={}, got={}",
+                        func.num_args,
+                        local_args.len()
+                    ));
+                }
+                self.push_frame(Frame::new(func, local_args));
+                self.run()?;
+            }
+            AllObjects::BuiltinFunction(builtin) => {
+                if local_args.len() != builtin.num_params {
+                    return Err(anyhow!(
+                        "wrong number of arguments: want={}, got={}",
+                        builtin.num_params,
+                        local_args.len()
+                    ));
+                }
+                let result = (builtin.func)(local_args)?;
+                self.push(result)?;
+            }
             v => return Err(anyhow!("expected a function, found {}", v.inspect())),
         };
 
-        if local_args.len() != func.num_args {
-            return Err(anyhow!(
-                "wrong number of arguments: want={}, got={}",
-                func.num_args,
-                local_args.len()
-            ));
-        }
-
-        self.push_frame(Frame::new(func, local_args));
-
-        self.run()?;
         Ok(())
     }
 

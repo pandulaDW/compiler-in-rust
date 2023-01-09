@@ -1,5 +1,6 @@
 use super::{AllObjects, Object};
 use crate::code::Instructions;
+use anyhow::Result;
 use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -98,16 +99,43 @@ impl Object for CompiledFunctionObj {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+pub type BuiltinFn = fn(Vec<AllObjects>) -> Result<AllObjects>;
+
+#[derive(Clone)]
 pub struct BuiltinFunctionObj {
     pub fn_name: String,
-    pub parameters: ParamsType,
+    pub num_params: usize,
+    pub func: BuiltinFn,
+}
+
+impl BuiltinFunctionObj {
+    pub fn new(fn_name: &str, num_params: usize, func: BuiltinFn) -> Self {
+        Self {
+            fn_name: fn_name.to_string(),
+            num_params,
+            func,
+        }
+    }
+}
+
+impl PartialEq for BuiltinFunctionObj {
+    fn eq(&self, other: &Self) -> bool {
+        self.fn_name == other.fn_name
+    }
+}
+
+impl Eq for BuiltinFunctionObj {}
+
+impl Hash for BuiltinFunctionObj {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.fn_name.hash(state);
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum ParamsType {
-    _Fixed(Vec<String>),
-    _Variadic,
+    Fixed(Vec<String>),
+    Variadic,
 }
 
 impl Object for BuiltinFunctionObj {

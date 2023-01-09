@@ -43,7 +43,7 @@ impl SymbolTable {
         };
 
         for (i, v) in BUILTIN_FUNCTIONS {
-            s.define_builtin(usize::try_from(*i).unwrap(), v);
+            s.define_builtin(*i, v);
         }
 
         s

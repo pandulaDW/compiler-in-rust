@@ -379,6 +379,7 @@ mod tests {
                 outer() + globalNum;",
                 Int(50),
             ),
+            ("len(\"\")", Int(0)),
         ];
         let num_test_cases = test_cases.len();
 
