@@ -380,6 +380,12 @@ mod tests {
                 Int(50),
             ),
             ("len(\"\")", Int(0)),
+            (r#"len("four")"#, Int(4)),
+            (r#"len("hello world")"#, Int(11)),
+            ("len([1, 2, 3])", Int(3)),
+            ("len([])", Int(0)),
+            ("let v = [1,2,3]; push(v,10)", Literal::Null),
+            ("let v = [1,2,3]; push(v,10); v[3]", Int(10)),
         ];
         let num_test_cases = test_cases.len();
 
@@ -421,6 +427,11 @@ mod tests {
             (
                 "fn(a, b) { a + b; }(1);",
                 "wrong number of arguments: want=2, got=1",
+            ),
+            ("len(1)", "argument to `len` not supported, got INTEGER"),
+            (
+                "len(\"one\", \"two\")",
+                "wrong number of arguments: want=1, got=2",
             ),
         ];
 

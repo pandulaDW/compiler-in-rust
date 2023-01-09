@@ -1,7 +1,8 @@
 use super::{
-    objects::{BuiltinFunctionObj, Integer},
+    objects::{BuiltinFunctionObj, Integer, Null},
     AllObjects,
 };
+use crate::object::Object;
 use anyhow::{anyhow, Result};
 
 /// Defines an index for the builtin functions for the VM to access using an operand
@@ -13,9 +14,12 @@ pub static BUILTIN_FUNCTIONS: &[(usize, &str)] = &[
     (5, "is_null"),
 ];
 
+/// Return the builtin function associated with the passed index number
 pub fn get_builtin_function(index: usize) -> Option<AllObjects> {
     let func = match index {
         1 => BuiltinFunctionObj::new("len", 1, len),
+        2 => BuiltinFunctionObj::new("print", usize::MAX, print),
+        3 => BuiltinFunctionObj::new("push", 2, push),
         _ => return None,
     };
 
@@ -32,7 +36,7 @@ pub fn len(mut values: Vec<AllObjects>) -> Result<AllObjects> {
         AllObjects::HashMap(v) => v.map.borrow().len(),
         v => {
             return Err(anyhow!(
-                "value should either be an array, a hashmap or a string, received a {}",
+                "argument to `len` not supported, got {}",
                 v.object_type()
             ))
         }
@@ -44,4 +48,40 @@ pub fn len(mut values: Vec<AllObjects>) -> Result<AllObjects> {
     });
 
     Ok(length)
+}
+
+/// Takes a variable number of arguments and prints each one consecutively to the stdout with a single space separator.
+///
+/// If no arguments are provided, it will print a newline.
+pub fn print(args: Vec<AllObjects>) -> Result<AllObjects> {
+    for (i, arg) in args.iter().enumerate() {
+        print!("{}", arg.inspect());
+        if i != args.len() - 1 {
+            print!(" ");
+        }
+    }
+
+    if args.is_empty() {
+        println!();
+    }
+
+    Ok(AllObjects::Null(Null))
+}
+
+/// Appends an element to the back of the array
+pub fn push(mut args: Vec<AllObjects>) -> Result<AllObjects> {
+    let array = match args.remove(0) {
+        AllObjects::ArrayObj(v) => v,
+        v => {
+            return Err(anyhow!(
+                "argument to `push` not supported, got {}",
+                v.object_type()
+            ))
+        }
+    };
+
+    // since all array borrows are temporary, this wouldn't cause a panic.
+    array.elements.borrow_mut().push(args.remove(0));
+
+    Ok(AllObjects::Null(Null))
 }

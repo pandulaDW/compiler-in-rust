@@ -132,12 +132,6 @@ impl Hash for BuiltinFunctionObj {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub enum ParamsType {
-    Fixed(Vec<String>),
-    Variadic,
-}
-
 impl Object for BuiltinFunctionObj {
     fn inspect(&self) -> String {
         self.fn_name.to_string()

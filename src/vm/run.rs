@@ -344,7 +344,7 @@ impl VM {
                 self.run()?;
             }
             AllObjects::BuiltinFunction(builtin) => {
-                if local_args.len() != builtin.num_params {
+                if local_args.len() != builtin.num_params && builtin.num_params != usize::MAX {
                     return Err(anyhow!(
                         "wrong number of arguments: want={}, got={}",
                         builtin.num_params,
