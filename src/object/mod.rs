@@ -18,6 +18,7 @@ pub enum ObjectType {
     BuiltInFunction,
     Array,
     HashMap,
+    Closure,
 }
 
 impl Display for ObjectType {
@@ -31,6 +32,7 @@ impl Display for ObjectType {
             ObjectType::BuiltInFunction => "BUILTIN_FUNCTION",
             ObjectType::Array => "ARRAY",
             ObjectType::HashMap => "HASH_MAP",
+            ObjectType::Closure => "CLOSURE",
         };
         write!(f, "{}", out)
     }
@@ -49,6 +51,7 @@ pub enum AllObjects {
     BuiltinFunction(objects::BuiltinFunctionObj),
     ArrayObj(objects::ArrayObj),
     HashMap(objects::HashMapObj),
+    Closure(objects::Closure),
 }
 
 impl Object for AllObjects {
@@ -62,6 +65,7 @@ impl Object for AllObjects {
             Self::BuiltinFunction(v) => v.inspect(),
             Self::ArrayObj(v) => v.inspect(),
             Self::HashMap(v) => v.inspect(),
+            Self::Closure(v) => v.inspect(),
         }
     }
 }
@@ -77,6 +81,7 @@ impl AllObjects {
             Self::BuiltinFunction(_) => ObjectType::BuiltInFunction,
             Self::ArrayObj(_) => ObjectType::Array,
             Self::HashMap(_) => ObjectType::HashMap,
+            Self::Closure(_) => ObjectType::Closure,
         }
     }
 

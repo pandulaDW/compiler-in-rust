@@ -5,7 +5,7 @@ use crate::{
     code::{self, *},
     object::{
         builtins::get_builtin_function,
-        objects::{ArrayObj, HashMapObj, Integer, StringObj},
+        objects::{ArrayObj, Closure, HashMapObj, Integer, StringObj},
         AllObjects, Object, ObjectType,
     },
 };
@@ -33,6 +33,7 @@ impl VM {
                 OP_ARRAY => self.run_array_literal_instruction()?,
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
+                OP_CLOSURE => self.run_closure_instruction()?,
                 OP_CALL => self.run_call_expression()?,
                 OP_ASSIGN_GLOBAL => self.run_assign_global_instruction()?,
                 OP_GET_BUILTIN => self.run_get_builtin()?,
@@ -319,6 +320,22 @@ impl VM {
         Ok(())
     }
 
+    fn run_closure_instruction(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let const_index = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
+        _ = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 3)..]);
+        self.current_frame().ip += 3;
+
+        let func = match &self.constants[const_index] {
+            AllObjects::CompiledFunction(v) => v,
+            v => return Err(anyhow!("not a function: {}", v.inspect())),
+        };
+
+        let closure = Closure::new(func.to_owned());
+        self.push(AllObjects::Closure(closure))?;
+        Ok(())
+    }
+
     fn run_call_expression(&mut self) -> Result<()> {
         let ip = self.current_frame().ip;
         let num_args = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
@@ -330,15 +347,15 @@ impl VM {
         local_args.reverse();
 
         match self.pop()? {
-            AllObjects::CompiledFunction(func) => {
-                if local_args.len() != func.num_args {
+            AllObjects::Closure(c) => {
+                if local_args.len() != c.func.num_args {
                     return Err(anyhow!(
                         "wrong number of arguments: want={}, got={}",
-                        func.num_args,
+                        c.func.num_args,
                         local_args.len()
                     ));
                 }
-                self.push_frame(Frame::new(func, local_args));
+                self.push_frame(Frame::new(c.func, local_args));
                 self.run()?;
             }
             AllObjects::BuiltinFunction(builtin) => {

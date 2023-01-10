@@ -119,7 +119,9 @@ pub fn execute_program<U: Write>(text: &str, output: &mut U) -> io::Result<()> {
         return Ok(());
     };
 
-    writeln!(output, "{}", stack_top.inspect())?;
+    if !stack_top.is_null() {
+        writeln!(output, "{}", stack_top.inspect())?;
+    }
 
     Ok(())
 }

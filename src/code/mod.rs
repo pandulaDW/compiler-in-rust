@@ -39,6 +39,7 @@ pub const OP_GET_LOCAL: Opcode = 25;
 pub const OP_SET_LOCAL: Opcode = 26;
 pub const OP_ASSIGN_GLOBAL: Opcode = 27;
 pub const OP_GET_BUILTIN: Opcode = 28;
+pub const OP_CLOSURE: Opcode = 29;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -90,6 +91,7 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_SET_LOCAL => Ok(Definition::new("OpSetLocal", vec![1])),
         OP_ASSIGN_GLOBAL => Ok(Definition::new("OpAssignGlobal", vec![2])),
         OP_GET_BUILTIN => Ok(Definition::new("OpGetBuiltIn", vec![1])),
+        OP_CLOSURE => Ok(Definition::new("OpClosure", vec![2, 1])), // constant_index_of_fn, num_free_vars
         _ => Err(anyhow!("opcode must be defined")),
     }
 }
@@ -137,6 +139,11 @@ mod tests {
             (OP_CONSTANT, vec![65534], vec![OP_CONSTANT, 255, 254]),
             (OP_ADD, vec![], vec![OP_ADD]),
             (OP_GET_LOCAL, vec![254], vec![OP_GET_LOCAL, 254]),
+            (
+                OP_CLOSURE,
+                vec![65532, 255],
+                vec![OP_CLOSURE, 255, 252, 255],
+            ),
         ];
 
         for tc in test_cases {
@@ -152,12 +159,14 @@ mod tests {
             make(OP_GET_LOCAL, &[253]),
             make(OP_CONSTANT, &[2]),
             make(OP_CONSTANT, &[65535]),
+            make(OP_CLOSURE, &[65535, 255]),
         ];
 
         let expected = "0000 OpAdd
 0001 OpGetLocal 253
 0003 OpConstant 2
 0006 OpConstant 65535
+0009 OpClosure 65535 255
 ";
 
         let concatted = concat_instructions(instructions);
@@ -245,6 +254,7 @@ mod test_helpers {
         match operand_count {
             0 => def.name.to_string(),
             1 => format!("{} {}", def.name, operands[0]),
+            2 => format!("{} {} {}", def.name, operands[0], operands[1]),
             _ => format!("ERROR: unhandled operandCount for {}\n", def.name),
         }
     }

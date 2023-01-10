@@ -9,10 +9,10 @@ use crate::{
         AllNodes,
     },
     code::{
-        make, OP_ADD, OP_ARRAY, OP_ASSIGN_GLOBAL, OP_BANG, OP_CALL, OP_CONSTANT, OP_DIV, OP_EQUAL,
-        OP_FALSE, OP_GET_BUILTIN, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN, OP_HASH, OP_INDEX,
-        OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL, OP_POP, OP_RETURN,
-        OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
+        make, OP_ADD, OP_ARRAY, OP_ASSIGN_GLOBAL, OP_BANG, OP_CALL, OP_CLOSURE, OP_CONSTANT,
+        OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_BUILTIN, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN,
+        OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
+        OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
     },
     object::{
         objects::{CompiledFunctionObj, Integer, StringObj},
@@ -201,7 +201,7 @@ impl Compiler {
             expr.parameters.len(),
         ));
         let constant_index = self.add_constant(compiled_fn);
-        self.emit(OP_CONSTANT, &[constant_index]);
+        self.emit(OP_CLOSURE, &[constant_index, 0]);
 
         Ok(())
     }

@@ -16,6 +16,7 @@ pub static BUILTIN_FUNCTIONS: &[(usize, &str)] = &[
     (6, "insert"),
     (7, "delete"),
     (8, "sleep"),
+    (9, "println"),
 ];
 
 /// Return the builtin function associated with the passed index number
@@ -29,6 +30,7 @@ pub fn get_builtin_function(index: usize) -> Option<AllObjects> {
         6 => BuiltinFunctionObj::new("insert", 3, insert),
         7 => BuiltinFunctionObj::new("delete", 2, delete),
         8 => BuiltinFunctionObj::new("sleep", 1, sleep),
+        9 => BuiltinFunctionObj::new("sleep", usize::MAX, println),
         _ => return None,
     };
 
@@ -55,8 +57,6 @@ pub fn len(mut values: Vec<AllObjects>) -> Result<AllObjects> {
 }
 
 /// Takes a variable number of arguments and prints each one consecutively to the stdout with a single space separator.
-///
-/// If no arguments are provided, it will print a newline.
 pub fn print(args: Vec<AllObjects>) -> Result<AllObjects> {
     for (i, arg) in args.iter().enumerate() {
         print!("{}", arg.inspect());
@@ -64,11 +64,19 @@ pub fn print(args: Vec<AllObjects>) -> Result<AllObjects> {
             print!(" ");
         }
     }
+    Ok(AllObjects::Null(Null))
+}
 
-    if args.is_empty() {
-        println!();
+/// Takes a variable number of arguments and prints each one consecutively to the stdout with a single space separator and
+/// a newline will be printed for each call.
+pub fn println(args: Vec<AllObjects>) -> Result<AllObjects> {
+    for (i, arg) in args.iter().enumerate() {
+        print!("{}", arg.inspect());
+        if i != args.len() - 1 {
+            print!(" ");
+        }
     }
-
+    println!();
     Ok(AllObjects::Null(Null))
 }
 

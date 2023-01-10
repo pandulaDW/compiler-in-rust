@@ -545,7 +545,7 @@ mod tests {
                         make(OP_RETURN_VALUE, &[]),
                     ]),
                 ],
-                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[2, 0]), make(OP_POP, &[])],
             ),
             (
                 "fn() { 5 + 10 }",
@@ -559,12 +559,12 @@ mod tests {
                         make(OP_RETURN_VALUE, &[]),
                     ]),
                 ],
-                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[2, 0]), make(OP_POP, &[])],
             ),
             (
                 "fn() { }",
                 vec![Ins(vec![make(OP_RETURN, &[])])],
-                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[0, 0]), make(OP_POP, &[])],
             ),
         ];
         run_compiler_tests(test_cases);
@@ -610,7 +610,7 @@ mod tests {
                     Ins(vec![make(OP_CONSTANT, &[0]), make(OP_RETURN_VALUE, &[])]),
                 ],
                 vec![
-                    make(OP_CONSTANT, &[1]),
+                    make(OP_CLOSURE, &[1, 0]),
                     make(OP_CALL, &[0]),
                     make(OP_POP, &[]),
                 ],
@@ -622,7 +622,7 @@ mod tests {
                     Ins(vec![make(OP_CONSTANT, &[0]), make(OP_RETURN_VALUE, &[])]),
                 ],
                 vec![
-                    make(OP_CONSTANT, &[1]),
+                    make(OP_CLOSURE, &[1, 0]),
                     make(OP_SET_GLOBAL, &[0]),
                     make(OP_GET_GLOBAL, &[0]),
                     make(OP_CALL, &[0]),
@@ -648,7 +648,7 @@ mod tests {
                 vec![
                     make(OP_CONSTANT, &[0]),
                     make(OP_SET_GLOBAL, &[0]),
-                    make(OP_CONSTANT, &[1]),
+                    make(OP_CLOSURE, &[1, 0]),
                     make(OP_POP, &[]),
                 ],
             ),
@@ -666,7 +666,7 @@ mod tests {
                         make(OP_RETURN_VALUE, &[]),
                     ]),
                 ],
-                vec![make(OP_CONSTANT, &[1]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[1, 0]), make(OP_POP, &[])],
             ),
             (
                 "fn() {
@@ -688,7 +688,7 @@ mod tests {
                         make(OP_RETURN_VALUE, &[]),
                     ]),
                 ],
-                vec![make(OP_CONSTANT, &[2]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[2, 0]), make(OP_POP, &[])],
             ),
         ];
         run_compiler_tests(test_cases);
@@ -730,7 +730,7 @@ mod tests {
                 vec![
                     make(OP_CONSTANT, &[0]),
                     make(OP_SET_GLOBAL, &[0]),
-                    make(OP_CONSTANT, &[3]),
+                    make(OP_CLOSURE, &[3, 0]),
                     make(OP_POP, &[]),
                 ],
             ),
@@ -767,7 +767,7 @@ mod tests {
                     make(OP_CALL, &[1]),
                     make(OP_RETURN_VALUE, &[]),
                 ])],
-                vec![make(OP_CONSTANT, &[0]), make(OP_POP, &[])],
+                vec![make(OP_CLOSURE, &[0, 0]), make(OP_POP, &[])],
             ),
         ];
         run_compiler_tests(test_cases);

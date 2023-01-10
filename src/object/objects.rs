@@ -207,3 +207,21 @@ impl Object for HashMapObj {
         format!("{{ {} }}", out)
     }
 }
+
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub struct Closure {
+    pub func: CompiledFunctionObj,
+    pub free: Vec<AllObjects>,
+}
+
+impl Closure {
+    pub fn new(func: CompiledFunctionObj) -> Self {
+        Self { func, free: vec![] }
+    }
+}
+
+impl Object for Closure {
+    fn inspect(&self) -> String {
+        format!("Closure[{}]", self.func.inspect())
+    }
+}
