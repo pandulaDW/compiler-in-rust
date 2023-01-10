@@ -159,7 +159,9 @@ pub fn execute_line_for_repl<U: Write>(
         return Ok((modified_constants, machine.globals, modified_symbol_table));
     };
 
-    writeln!(output, "{}", stack_top.inspect())?;
+    if !stack_top.is_null() {
+        writeln!(output, "{}", stack_top.inspect())?;
+    }
 
     Ok((modified_constants, machine.globals, modified_symbol_table))
 }

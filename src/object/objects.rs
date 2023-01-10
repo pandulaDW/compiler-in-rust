@@ -53,17 +53,6 @@ impl Object for Null {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub struct Error {
-    pub message: String,
-}
-
-impl Object for Error {
-    fn inspect(&self) -> String {
-        format!("Error: {}", self.message)
-    }
-}
-
 #[derive(Clone)]
 pub struct CompiledFunctionObj {
     pub instructions: Instructions,

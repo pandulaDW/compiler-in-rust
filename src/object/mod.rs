@@ -14,8 +14,6 @@ pub enum ObjectType {
     String,
     Boolean,
     Null,
-    Error,
-    Return,
     CompiledFunction,
     BuiltInFunction,
     Array,
@@ -29,8 +27,6 @@ impl Display for ObjectType {
             ObjectType::String => "STRING",
             ObjectType::Boolean => "BOOLEAN",
             ObjectType::Null => "NULL",
-            ObjectType::Error => "ERROR",
-            ObjectType::Return => "RETURN",
             ObjectType::CompiledFunction => "COMPILED_FUNCTION",
             ObjectType::BuiltInFunction => "BUILTIN_FUNCTION",
             ObjectType::Array => "ARRAY",
@@ -49,8 +45,6 @@ pub enum AllObjects {
     StringObj(objects::StringObj),
     Boolean(objects::Boolean),
     Null(objects::Null),
-    _Error(objects::Error),
-    _ReturnValue(Box<AllObjects>),
     CompiledFunction(objects::CompiledFunctionObj),
     BuiltinFunction(objects::BuiltinFunctionObj),
     ArrayObj(objects::ArrayObj),
@@ -64,8 +58,6 @@ impl Object for AllObjects {
             Self::StringObj(v) => v.inspect(),
             Self::Boolean(v) => v.inspect(),
             Self::Null(v) => v.inspect(),
-            Self::_Error(v) => v.inspect(),
-            Self::_ReturnValue(v) => v.inspect(),
             Self::CompiledFunction(v) => v.inspect(),
             Self::BuiltinFunction(v) => v.inspect(),
             Self::ArrayObj(v) => v.inspect(),
@@ -81,19 +73,11 @@ impl AllObjects {
             Self::StringObj(_) => ObjectType::String,
             Self::Boolean(_) => ObjectType::Boolean,
             Self::Null(_) => ObjectType::Null,
-            Self::_Error(_) => ObjectType::Error,
-            Self::_ReturnValue(_) => ObjectType::Return,
             Self::CompiledFunction(_) => ObjectType::CompiledFunction,
             Self::BuiltinFunction(_) => ObjectType::BuiltInFunction,
             Self::ArrayObj(_) => ObjectType::Array,
             Self::HashMap(_) => ObjectType::HashMap,
         }
-    }
-
-    pub fn _new_error(message: &str) -> Self {
-        Self::_Error(objects::Error {
-            message: message.to_string(),
-        })
     }
 
     pub fn is_integer(&self) -> bool {
@@ -104,15 +88,11 @@ impl AllObjects {
         self.object_type() == ObjectType::Boolean
     }
 
-    pub fn _is_null(&self) -> bool {
+    pub fn is_null(&self) -> bool {
         self.object_type() == ObjectType::Null
     }
 
     pub fn is_string(&self) -> bool {
         self.object_type() == ObjectType::String
-    }
-
-    pub fn _is_error(&self) -> bool {
-        self.object_type() == ObjectType::Error
     }
 }
