@@ -772,6 +772,107 @@ mod tests {
         ];
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_closures() {
+        use Literal::{Ins, Int};
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "fn(a) { fn(b) { a + b } }",
+                vec![
+                    Ins(vec![
+                        make(OP_GET_FREE, &[0]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Ins(vec![
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CLOSURE, &[0, 1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![make(OP_CLOSURE, &[1, 0]), make(OP_POP, &[])],
+            ),
+            (
+                "fn(a) { fn(b) { fn(c) { a + b + c } } }",
+                vec![
+                    Ins(vec![
+                        make(OP_GET_FREE, &[0]),
+                        make(OP_GET_FREE, &[1]),
+                        make(OP_ADD, &[]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Ins(vec![
+                        make(OP_GET_FREE, &[0]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CLOSURE, &[0, 2]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Ins(vec![
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CLOSURE, &[1, 1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![make(OP_CLOSURE, &[2, 0]), make(OP_POP, &[])],
+            ),
+            (
+                "let global = 55;
+                fn() {
+                    let a = 66;
+                    fn() {
+                        let b = 77;
+                        fn() {
+                            let c = 88;
+                            global + a + b + c;
+                        }
+                    }
+                }",
+                vec![
+                    Int(55),
+                    Int(66),
+                    Int(77),
+                    Int(88),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[3]),
+                        make(OP_SET_LOCAL, &[0]),
+                        make(OP_GET_GLOBAL, &[0]),
+                        make(OP_GET_FREE, &[0]),
+                        make(OP_ADD, &[]),
+                        make(OP_GET_FREE, &[1]),
+                        make(OP_ADD, &[]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_ADD, &[]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[2]),
+                        make(OP_SET_LOCAL, &[0]),
+                        make(OP_GET_FREE, &[0]),
+                        make(OP_CLOSURE, &[4, 2]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Ins(vec![
+                        make(OP_CONSTANT, &[1]),
+                        make(OP_SET_LOCAL, &[0]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CLOSURE, &[5, 1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![
+                    make(OP_CONSTANT, &[0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_CLOSURE, &[6, 0]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]

@@ -326,9 +326,12 @@ impl VM {
         _ = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 3)..]);
         self.current_frame().ip += 3;
 
-        let func = match &self.constants[const_index] {
-            AllObjects::CompiledFunction(v) => v,
-            v => return Err(anyhow!("not a function: {}", v.inspect())),
+        let func = match self.constants.get(const_index) {
+            Some(obj) => match obj {
+                AllObjects::CompiledFunction(v) => v,
+                v => return Err(anyhow!("not a function: {}", v.inspect())),
+            },
+            None => return Err(anyhow!("constant at index {const_index} not found")),
         };
 
         let closure = Closure::new(func.to_owned());

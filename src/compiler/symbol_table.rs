@@ -6,6 +6,7 @@ type SymbolScope = &'static str;
 pub const GLOBAL_SCOPE: SymbolScope = "GLOBAL";
 pub const LOCAL_SCOPE: SymbolScope = "LOCAL";
 pub const BUILTIN_SCOPE: SymbolScope = "BUILTIN";
+pub const FREE_SCOPE: SymbolScope = "FREE";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Symbol {
@@ -29,6 +30,7 @@ impl Symbol {
 pub struct SymbolTable {
     pub table: RefCell<SymbolTableDefinition>,
     pub outer: Option<Rc<SymbolTable>>,
+    pub free_symbols: RefCell<Vec<Symbol>>,
 }
 
 impl SymbolTable {
@@ -37,6 +39,7 @@ impl SymbolTable {
         let s = SymbolTable {
             table: RefCell::new(SymbolTableDefinition::default()),
             outer: None,
+            free_symbols: RefCell::new(vec![]),
         };
 
         for (i, v) in BUILTIN_FUNCTIONS {
@@ -69,12 +72,46 @@ impl SymbolTable {
     }
 
     /// Returns the symbol associated with the given name by recursively checking all the scopes
+    ///
+    /// It will also set the free variables, if found.
     pub fn resolve(&self, name: &str) -> Option<Symbol> {
-        let mut result = self.table.borrow().store.get(name).cloned();
-        if result.is_none() && self.outer.is_some() {
-            result = self.outer.as_ref().unwrap().resolve(name);
+        let mut obj = self.table.borrow().store.get(name).cloned();
+
+        if obj.is_none() && self.outer.is_some() {
+            obj = self.outer.as_ref().unwrap().resolve(name);
+            if obj.is_none() {
+                return obj;
+            }
+
+            let scope = obj.as_ref().unwrap().scope;
+            if scope == GLOBAL_SCOPE || scope == BUILTIN_SCOPE {
+                return obj;
+            }
+
+            let free = self.define_free(obj.unwrap());
+            return Some(free);
         }
-        result
+
+        obj
+    }
+
+    /// Defines a free variable in the symbol-table's free variable holder
+    pub fn define_free(&self, original: Symbol) -> Symbol {
+        let symbol_name = original.name.clone();
+        self.free_symbols.borrow_mut().push(original);
+
+        let symbol = Symbol::new(
+            &symbol_name,
+            FREE_SCOPE,
+            self.free_symbols.borrow().len() - 1,
+        );
+
+        self.table
+            .borrow_mut()
+            .store
+            .insert(symbol_name, symbol.clone());
+
+        symbol
     }
 }
 
@@ -100,7 +137,7 @@ impl SymbolTableDefinition {
 
 #[cfg(test)]
 mod tests {
-    use super::{Symbol, SymbolTable, BUILTIN_SCOPE, GLOBAL_SCOPE, LOCAL_SCOPE};
+    use super::{Symbol, SymbolTable, BUILTIN_SCOPE, FREE_SCOPE, GLOBAL_SCOPE, LOCAL_SCOPE};
     use std::{collections::HashMap, rc::Rc};
 
     #[test]
@@ -241,6 +278,95 @@ mod tests {
                 assert!(result.is_some());
                 assert_eq!(*sym, result.unwrap());
             }
+        }
+    }
+
+    #[test]
+    fn test_resolve_free() {
+        let global = SymbolTable::new();
+        global.define("a");
+        global.define("b");
+        let global_ref = Rc::new(global);
+
+        let first_local = SymbolTable::new_enclosed(global_ref.clone());
+        first_local.define("c");
+        first_local.define("d");
+        let first_local_ref = Rc::new(first_local);
+
+        let second_local = SymbolTable::new_enclosed(first_local_ref.clone());
+        second_local.define("e");
+        second_local.define("f");
+        let second_local_ref = Rc::new(second_local);
+
+        // (table, expected_symbols, expected_free_symbols)
+        let test_cases = vec![
+            (
+                first_local_ref,
+                vec![
+                    Symbol::new("a", GLOBAL_SCOPE, 0),
+                    Symbol::new("b", GLOBAL_SCOPE, 1),
+                    Symbol::new("c", LOCAL_SCOPE, 0),
+                    Symbol::new("d", LOCAL_SCOPE, 1),
+                ],
+                vec![],
+            ),
+            (
+                second_local_ref,
+                vec![
+                    Symbol::new("a", GLOBAL_SCOPE, 0),
+                    Symbol::new("b", GLOBAL_SCOPE, 1),
+                    Symbol::new("c", FREE_SCOPE, 0),
+                    Symbol::new("d", FREE_SCOPE, 1),
+                    Symbol::new("e", LOCAL_SCOPE, 0),
+                    Symbol::new("f", LOCAL_SCOPE, 1),
+                ],
+                vec![
+                    Symbol::new("c", LOCAL_SCOPE, 0),
+                    Symbol::new("d", LOCAL_SCOPE, 0),
+                ],
+            ),
+        ];
+
+        for tc in test_cases {
+            for sym in tc.1 {
+                let result = tc.0.resolve(&sym.name);
+                assert!(result.is_some());
+                assert_eq!(sym, result.unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn test_resolve_unresolvable_free() {
+        let global = SymbolTable::new();
+        global.define("a");
+        let global_ref = Rc::new(global);
+
+        let first_local = SymbolTable::new_enclosed(global_ref.clone());
+        first_local.define("c");
+        let first_local_ref = Rc::new(first_local);
+
+        let second_local = SymbolTable::new_enclosed(first_local_ref.clone());
+        second_local.define("e");
+        second_local.define("f");
+
+        // (table, expected_symbols, expected_free_symbols)
+        let expected = vec![
+            Symbol::new("a", GLOBAL_SCOPE, 0),
+            Symbol::new("c", FREE_SCOPE, 0),
+            Symbol::new("e", LOCAL_SCOPE, 0),
+            Symbol::new("f", LOCAL_SCOPE, 1),
+        ];
+
+        for sym in expected {
+            let result = second_local.resolve(&sym.name);
+            assert!(result.is_some());
+            assert_eq!(sym, result.unwrap());
+        }
+
+        for name in ["b", "d"] {
+            let result = second_local.resolve(name);
+            assert!(result.is_none());
         }
     }
 }
