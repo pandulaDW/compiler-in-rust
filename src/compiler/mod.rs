@@ -852,6 +852,7 @@ mod tests {
                         make(OP_CONSTANT, &[2]),
                         make(OP_SET_LOCAL, &[0]),
                         make(OP_GET_FREE, &[0]),
+                        make(OP_GET_LOCAL, &[0]),
                         make(OP_CLOSURE, &[4, 2]),
                         make(OP_RETURN_VALUE, &[]),
                     ]),

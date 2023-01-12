@@ -322,7 +322,7 @@ mod tests {
                 ],
                 vec![
                     Symbol::new("c", LOCAL_SCOPE, 0),
-                    Symbol::new("d", LOCAL_SCOPE, 0),
+                    Symbol::new("d", LOCAL_SCOPE, 1),
                 ],
             ),
         ];
@@ -330,6 +330,15 @@ mod tests {
         for tc in test_cases {
             for sym in tc.1 {
                 let result = tc.0.resolve(&sym.name);
+                assert!(result.is_some());
+                assert_eq!(sym, result.unwrap());
+            }
+
+            assert_eq!(tc.0.free_symbols.borrow().len(), tc.2.len());
+
+            for (i, sym) in tc.2.iter().enumerate() {
+                let borrow = tc.0.free_symbols.borrow();
+                let result = borrow.get(i);
                 assert!(result.is_some());
                 assert_eq!(sym, result.unwrap());
             }

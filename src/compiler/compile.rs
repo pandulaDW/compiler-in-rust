@@ -8,18 +8,13 @@ use crate::{
         statements::{self, AllStatements},
         AllNodes,
     },
-    code::{
-        make, OP_ADD, OP_ARRAY, OP_ASSIGN_GLOBAL, OP_BANG, OP_CALL, OP_CLOSURE, OP_CONSTANT,
-        OP_DIV, OP_EQUAL, OP_FALSE, OP_GET_BUILTIN, OP_GET_GLOBAL, OP_GET_LOCAL, OP_GREATER_THAN,
-        OP_HASH, OP_INDEX, OP_JUMP, OP_JUMP_NOT_TRUTHY, OP_MINUS, OP_MUL, OP_NOT_EQUAL, OP_NULL,
-        OP_POP, OP_RETURN, OP_RETURN_VALUE, OP_SET_GLOBAL, OP_SET_LOCAL, OP_SUB, OP_TRUE,
-    },
+    code::*,
     object::{
         objects::{CompiledFunctionObj, Integer, StringObj},
         AllObjects,
     },
 };
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Result};
 
 impl Compiler {
     /// Entrypoint for the compilation process. This method will be called
@@ -194,14 +189,27 @@ impl Compiler {
             self.emit(OP_RETURN, &[]);
         }
 
+        let free_symbols = self
+            .symbol_table
+            .free_symbols
+            .borrow()
+            .iter()
+            .cloned()
+            .collect::<Vec<Symbol>>();
+        let num_free_symbols = free_symbols.len();
+
         let fn_instructions = self.leave_scope();
+
+        for s in free_symbols {
+            self.load_symbol(s);
+        }
 
         let compiled_fn = AllObjects::CompiledFunction(CompiledFunctionObj::new(
             fn_instructions,
             expr.parameters.len(),
         ));
         let constant_index = self.add_constant(compiled_fn);
-        self.emit(OP_CLOSURE, &[constant_index, 0]);
+        self.emit(OP_CLOSURE, &[constant_index, num_free_symbols]);
 
         Ok(())
     }
@@ -298,6 +306,7 @@ impl Compiler {
             symbol_table::GLOBAL_SCOPE => self.emit(OP_GET_GLOBAL, &[s.index]),
             symbol_table::LOCAL_SCOPE => self.emit(OP_GET_LOCAL, &[s.index]),
             symbol_table::BUILTIN_SCOPE => self.emit(OP_GET_BUILTIN, &[s.index]),
+            symbol_table::FREE_SCOPE => self.emit(OP_GET_FREE, &[s.index]),
             _ => unreachable!(),
         };
     }
