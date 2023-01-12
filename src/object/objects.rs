@@ -215,8 +215,8 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub fn new(func: CompiledFunctionObj) -> Self {
-        Self { func, free: vec![] }
+    pub fn new(func: CompiledFunctionObj, free: Vec<AllObjects>) -> Self {
+        Self { func, free }
     }
 }
 

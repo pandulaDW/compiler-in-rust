@@ -34,6 +34,7 @@ impl VM {
                 OP_HASH => self.run_hash_literal_instruction()?,
                 OP_INDEX => self.run_index_expression()?,
                 OP_CLOSURE => self.run_closure_instruction()?,
+                OP_GET_FREE => self.run_get_free()?,
                 OP_CALL => self.run_call_expression()?,
                 OP_ASSIGN_GLOBAL => self.run_assign_global_instruction()?,
                 OP_GET_BUILTIN => self.run_get_builtin()?,
@@ -323,7 +324,7 @@ impl VM {
     fn run_closure_instruction(&mut self) -> Result<()> {
         let ip = self.current_frame().ip;
         let const_index = code::helpers::read_u16(&self.current_frame().instructions()[(ip + 1)..]);
-        _ = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 3)..]);
+        let num_free = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 3)..]);
         self.current_frame().ip += 3;
 
         let func = match self.constants.get(const_index) {
@@ -332,10 +333,31 @@ impl VM {
                 v => return Err(anyhow!("not a function: {}", v.inspect())),
             },
             None => return Err(anyhow!("constant at index {const_index} not found")),
-        };
+        }
+        .to_owned();
 
-        let closure = Closure::new(func.to_owned());
+        let mut free_vars = Vec::with_capacity(num_free);
+        for _ in 0..num_free {
+            free_vars.push(self.pop()?);
+        }
+
+        let closure = Closure::new(func, free_vars);
         self.push(AllObjects::Closure(closure))?;
+        Ok(())
+    }
+
+    fn run_get_free(&mut self) -> Result<()> {
+        let ip = self.current_frame().ip;
+        let free_index = code::helpers::read_u8(&self.current_frame().instructions()[(ip + 1)..]);
+        self.current_frame().ip += 1;
+
+        let current_closure = &self.current_frame().closure;
+        let Some(free_var) = current_closure.free.get(free_index) else {
+            return Err(anyhow!("free variable at index {free_index} not found"));
+        };
+        let free_var = free_var.to_owned();
+        self.push(free_var)?;
+
         Ok(())
     }
 
@@ -358,7 +380,7 @@ impl VM {
                         local_args.len()
                     ));
                 }
-                self.push_frame(Frame::new(c.func, local_args));
+                self.push_frame(Frame::new(c, local_args));
                 self.run()?;
             }
             AllObjects::BuiltinFunction(builtin) => {
