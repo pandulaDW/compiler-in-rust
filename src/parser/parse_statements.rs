@@ -1,4 +1,4 @@
-use crate::ast::expressions::Identifier;
+use crate::ast::expressions::{AllExpressions, Identifier};
 use crate::ast::statements::{AllStatements, LetStatement, ReturnStatement, WhileStatement};
 use crate::lexer::token::TokenType;
 
@@ -36,7 +36,11 @@ impl Parser {
         }
 
         self.next_token();
-        let value = self.parse_expression(Precedence::Lowest)?;
+        let mut value = self.parse_expression(Precedence::Lowest)?;
+
+        if let AllExpressions::FunctionLiteral(v) = value.as_mut() {
+            v.name = identifier.value.clone()
+        };
 
         if self.peek_token_is(&TokenType::Semicolon) {
             self.next_token();

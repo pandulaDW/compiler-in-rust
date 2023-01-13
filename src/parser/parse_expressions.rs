@@ -253,6 +253,7 @@ pub fn parse_function_literal(p: &mut Parser) -> BoxedExpression {
     let body = parse_block_statement(p);
 
     let fn_literal = FunctionLiteral {
+        name: String::new(),
         token,
         parameters,
         body,

@@ -410,6 +410,23 @@ mod tests {
     }
 
     #[test]
+    fn test_functional_literal_with_name() {
+        let mut program = helper_prepare_parser("let myFunction = fn() { };");
+        assert_eq!(program.statements.len(), 1);
+
+        let AllStatements::Let(let_stmt) = program.statements.remove(0) else {
+                panic!("{}", EXPECTED_LET);    
+        };
+
+        let function = match *let_stmt.value {
+            AllExpressions::FunctionLiteral(v) => v,
+            _ => panic!("{}", EXPECTED_FUNC),
+        };
+
+        assert_eq!(function.name, "myFunction");
+    }
+
+    #[test]
     fn test_parse_fn_literal_parameters() {
         // (input, expected_params)
         let input = [

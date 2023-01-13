@@ -37,6 +37,7 @@ impl VM {
                 OP_GET_FREE => self.run_get_free()?,
                 OP_CALL => self.run_call_expression()?,
                 OP_ASSIGN_GLOBAL => self.run_assign_global_instruction()?,
+                OP_CURRENT_CLOSURE => self.run_current_closure_instruction()?,
                 OP_GET_BUILTIN => self.run_get_builtin()?,
                 OP_RETURN_VALUE => {
                     self.pop_frame();
@@ -397,6 +398,12 @@ impl VM {
             v => return Err(anyhow!("expected a function, found {}", v.inspect())),
         };
 
+        Ok(())
+    }
+
+    fn run_current_closure_instruction(&mut self) -> Result<()> {
+        let current_closure = self.current_frame().closure.clone();
+        self.push(AllObjects::Closure(current_closure))?;
         Ok(())
     }
 

@@ -7,6 +7,7 @@ pub const GLOBAL_SCOPE: SymbolScope = "GLOBAL";
 pub const LOCAL_SCOPE: SymbolScope = "LOCAL";
 pub const BUILTIN_SCOPE: SymbolScope = "BUILTIN";
 pub const FREE_SCOPE: SymbolScope = "FREE";
+pub const FUNCTION_SCOPE: SymbolScope = "FUNCTION";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Symbol {
@@ -64,6 +65,16 @@ impl SymbolTable {
     /// Defines builtin functions in the BUILTIN_SCOPE
     pub fn define_builtin(&self, index: usize, name: &str) -> Symbol {
         let symbol = Symbol::new(name, BUILTIN_SCOPE, index);
+        self.table
+            .borrow_mut()
+            .store
+            .insert(name.to_string(), symbol.clone());
+        symbol
+    }
+
+    /// Defines function names to resolve recursive functions properly
+    pub fn define_function_name(&self, name: &str) -> Symbol {
+        let symbol = Symbol::new(name, FUNCTION_SCOPE, 0);
         self.table
             .borrow_mut()
             .store
@@ -137,7 +148,9 @@ impl SymbolTableDefinition {
 
 #[cfg(test)]
 mod tests {
-    use super::{Symbol, SymbolTable, BUILTIN_SCOPE, FREE_SCOPE, GLOBAL_SCOPE, LOCAL_SCOPE};
+    use super::{
+        Symbol, SymbolTable, BUILTIN_SCOPE, FREE_SCOPE, FUNCTION_SCOPE, GLOBAL_SCOPE, LOCAL_SCOPE,
+    };
     use std::{collections::HashMap, rc::Rc};
 
     #[test]
@@ -377,5 +390,28 @@ mod tests {
             let result = second_local.resolve(name);
             assert!(result.is_none());
         }
+    }
+
+    #[test]
+    fn test_define_and_resolve_function_name() {
+        let global = SymbolTable::new();
+        global.define_function_name("a");
+
+        let expected = Symbol::new("a", FUNCTION_SCOPE, 0);
+        let result = global.resolve(&expected.name);
+        assert!(result.is_some());
+        assert_eq!(expected, result.unwrap());
+    }
+
+    #[test]
+    fn test_shadowing_function_name() {
+        let global = SymbolTable::new();
+        global.define_function_name("a");
+        global.define("a");
+
+        let expected = Symbol::new("a", GLOBAL_SCOPE, 0);
+        let result = global.resolve(&expected.name);
+        assert!(result.is_some());
+        assert_eq!(expected, result.unwrap());
     }
 }

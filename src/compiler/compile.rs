@@ -73,8 +73,8 @@ impl Compiler {
     }
 
     fn compile_let_statements(&mut self, s: statements::LetStatement) -> Result<()> {
-        self.compile(AllNodes::Expressions(*s.value))?;
         let symbol = self.symbol_table.define(&s.name.value);
+        self.compile(AllNodes::Expressions(*s.value))?;
 
         if symbol.scope == symbol_table::LOCAL_SCOPE {
             self.emit(OP_SET_LOCAL, &[symbol.index]);
@@ -170,6 +170,10 @@ impl Compiler {
 
     fn compile_function_literals(&mut self, expr: expressions::FunctionLiteral) -> Result<()> {
         self.enter_scope();
+
+        if !expr.name.is_empty() {
+            self.symbol_table.define_function_name(&expr.name);
+        }
 
         for param in &expr.parameters {
             self.symbol_table.define(&param.value);
@@ -307,6 +311,7 @@ impl Compiler {
             symbol_table::LOCAL_SCOPE => self.emit(OP_GET_LOCAL, &[s.index]),
             symbol_table::BUILTIN_SCOPE => self.emit(OP_GET_BUILTIN, &[s.index]),
             symbol_table::FREE_SCOPE => self.emit(OP_GET_FREE, &[s.index]),
+            symbol_table::FUNCTION_SCOPE => self.emit(OP_CURRENT_CLOSURE, &[]),
             _ => unreachable!(),
         };
     }

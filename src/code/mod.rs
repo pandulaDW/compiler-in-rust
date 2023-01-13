@@ -41,6 +41,7 @@ pub const OP_ASSIGN_GLOBAL: Opcode = 27;
 pub const OP_GET_BUILTIN: Opcode = 28;
 pub const OP_CLOSURE: Opcode = 29;
 pub const OP_GET_FREE: Opcode = 30;
+pub const OP_CURRENT_CLOSURE: Opcode = 31;
 
 /// An opcode definition for debugging and testing purposes
 pub struct Definition {
@@ -94,6 +95,7 @@ pub fn lookup(op: Opcode) -> anyhow::Result<Definition> {
         OP_GET_BUILTIN => Ok(Definition::new("OpGetBuiltIn", vec![1])),
         OP_CLOSURE => Ok(Definition::new("OpClosure", vec![2, 1])), // constant_index_of_fn, num_free_vars
         OP_GET_FREE => Ok(Definition::new("OpGetFree", vec![1])),
+        OP_CURRENT_CLOSURE => Ok(Definition::new("OpCurrentClosure", vec![])),
         _ => Err(anyhow!("opcode must be defined")),
     }
 }

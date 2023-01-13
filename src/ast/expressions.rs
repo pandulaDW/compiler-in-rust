@@ -176,6 +176,7 @@ impl Display for IfExpression {
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct FunctionLiteral {
     pub token: token::Token,
+    pub name: String,
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
 }

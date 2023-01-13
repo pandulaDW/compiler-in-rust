@@ -874,6 +874,74 @@ mod tests {
         ];
         run_compiler_tests(test_cases);
     }
+
+    #[test]
+    fn test_recursive_functions() {
+        use Literal::{Ins, Int};
+        let test_cases: Vec<CompilerTestCase> = vec![
+            (
+                "let countDown = fn(x) {
+                countDown(x - 1); 
+            }; 
+            countDown(1);",
+                vec![
+                    Int(1),
+                    Ins(vec![
+                        make(OP_CURRENT_CLOSURE, &[]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CONSTANT, &[0]),
+                        make(OP_SUB, &[]),
+                        make(OP_CALL, &[1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Int(1),
+                ],
+                vec![
+                    make(OP_CLOSURE, &[1, 0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_CONSTANT, &[2]),
+                    make(OP_CALL, &[1]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+            (
+                "let wrapper = fn() {
+                    let countDown = fn(x) { countDown(x - 1); };
+                    countDown(1);
+                };
+                wrapper();",
+                vec![
+                    Int(1),
+                    Ins(vec![
+                        make(OP_CURRENT_CLOSURE, &[]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CONSTANT, &[0]),
+                        make(OP_SUB, &[]),
+                        make(OP_CALL, &[1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                    Int(1),
+                    Ins(vec![
+                        make(OP_CLOSURE, &[1, 0]),
+                        make(OP_SET_LOCAL, &[0]),
+                        make(OP_GET_LOCAL, &[0]),
+                        make(OP_CONSTANT, &[2]),
+                        make(OP_CALL, &[1]),
+                        make(OP_RETURN_VALUE, &[]),
+                    ]),
+                ],
+                vec![
+                    make(OP_CLOSURE, &[3, 0]),
+                    make(OP_SET_GLOBAL, &[0]),
+                    make(OP_GET_GLOBAL, &[0]),
+                    make(OP_CALL, &[0]),
+                    make(OP_POP, &[]),
+                ],
+            ),
+        ];
+        run_compiler_tests(test_cases);
+    }
 }
 
 #[cfg(test)]
